@@ -1,0 +1,87 @@
+Title: What's the best way to find the similarity among these vectors?
+Tags: <python><algorithm><computer-science>
+Body: <pre><code>v1 = [33, 24, 55, 56]
+v2 = [32, 25, 51, 40]
+v3 = [ ... ]
+v4 = [ ... ]
+</code></pre>
+
+<p>Normally, to find which vector is the most similar to v1, I would run v1 against the other vectors with a <strong>cosine similarity algorithm</strong>.</p>
+
+<p>Now, I have a more complex set of vectors with the structure:</p>
+
+<pre><code>v1 = [ { 'a': 4, 'b':9, 'c': 12 ... },
+       { 'a', 3, 'g':3, 'b': 33 ... },
+       { 'b', 1, 'k': 6, 'n': 19 ... },
+       ...
+     ]
+v2 = [ {}, {}, {} ... ]
+v3 = [ {}, {}, {} ... ]
+v4 = [ {}, {}, {} ... ]
+</code></pre>
+
+<p>Given this structure, how would you calculate similarity? (<em>A good match would be a vector with many keys similar to v1, with values of those keys very similar as v1's values</em>)</p>
+
+<p>btilly's answer:</p>
+
+<pre><code>def cosine_sim_complex(v, w):
+    '''
+    Complex version of cosine similarity
+    '''
+    def complicated_dot(v, w):
+        dot = 0
+        for (v_i, w_i) in zip(v, w):
+            #{ _, _ }, {_, _}
+            for x in v_i:
+                if x in w_i:
+                    dot += v_i[x] * w_i[x]
+        return float(dot)
+    length_v = float(complicated_dot(v, v) ** 0.5)
+    length_w = float(complicated_dot(w, w) ** 0.5)
+    score = complicated_dot(v, w) /  length_v / length_w
+    return score
+
+
+v1 = [ {'a':44, 'b':21 }, { 'a': 55, 'c': 22 } ]
+v2 = [ {'a':99, 'b':21 }, { 'a': 55, 'c': 22 } ]
+cosine_sim_complex(v1, v2)
+1.01342687531
+</code></pre>
+
+
+Title: In Celery, how do I run a task, and then have that task run another task, and keep it going?
+Tags: <python><django><data-structures><asynchronous><celery>
+Body: <pre><code>#tasks.py
+from celery.task import Task
+class Randomer(Task):
+    def run(self, **kwargs):
+        #run Randomer again!!!
+        return random.randrange(0,1000000)
+
+
+&gt;&gt;&gt; from tasks import Randomer
+&gt;&gt;&gt; r = Randomer()
+&gt;&gt;&gt; r.delay()
+</code></pre>
+
+<p>Right now, I run the simple task. And it returns a random number.  But, how do I make it run another task , <strong>inside that task</strong>?</p>
+
+
+Title: What is the best way to go about modeling something like Digg?
+Tags: <python><algorithm><matlab><statistics><scipy>
+Body: <p>I'm creating a news platform identical to Digg. How would I model its voting mechanism algorithm?  I'm looking for a logical/mathematical approach.</p>
+
+
+Title: Using Python's PIL, how do I enhance the contrast/saturation of an image?
+Tags: <python><algorithm><image><python-imaging-library>
+Body: <p>Just a simple contrast and saturation enhancement.
+Nothing fancy.</p>
+
+
+Title: If users are uploading images, and I need to do a lot of resizing/uploading, how should I set up my queue?
+Tags: <python><data-structures><amazon-s3><queue><distributed>
+Body: <p>When the user POSTS to my server, should I store the picture in the body of the queue, and then have the "worker" servers pull it out and resize/upload to S3?</p>
+
+<p>The reason I'm using a queue is because resizing/uploading 20 images to S3 takes a long time.</p>
+
+

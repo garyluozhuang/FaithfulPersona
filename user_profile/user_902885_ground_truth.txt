@@ -1,0 +1,344 @@
+Title: Preorder traversal in Python
+Tags: <python><algorithm>
+Body: <p>I was trying to brush up my algorithms skills.
+So, preorder traversal of btree:
+Here is my attempt.</p>
+
+<pre><code>class Node(object):
+    def __init__(self, val, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+def preorder(node):
+    if not node: return None
+    print node.val
+    preorder(node.left)
+    preorder(node.right)
+
+
+root = Node(20)
+root.left = Node(8)
+root.right = Node(22)
+root.left.left = Node(4)
+root.left.right = Node(12)
+root.left.right.left = Node(10)
+root.left.right.right = Node(14)
+tree ="""
+     20
+   8    22
+ 4  12 10  14
+"""
+print tree
+preorder(root)
+
+20
+8
+4
+12
+10
+14
+22
+</code></pre>
+
+<p>But this is wrong.. as 22 should come after 12.. right?</p>
+
+
+Answer: <p>The issue is in your <code>Node</code> assignments -</p>
+
+<pre><code>root = Node(20)
+root.left = Node(8)
+root.right = Node(22)
+root.left.left = Node(4)
+root.left.right = Node(12)
+root.left.right.left = Node(10)
+root.left.right.right = Node(14)
+</code></pre>
+
+<p>The Tree this creates looks like -</p>
+
+<pre><code>       20
+    8      22
+ 4    12
+   10     14
+</code></pre>
+
+<p>For this, the pre-order traversal you get is correct. </p>
+
+<hr>
+
+<p>For the tree you want -</p>
+
+<pre><code>     20
+   8    22
+ 4  12 10  14
+</code></pre>
+
+<p>you should assign <code>10</code> and <code>14</code> to <code>root.right.left</code> and <code>root.right.right</code> , not <code>root.left.right.left</code> , etc. Example -</p>
+
+<pre><code>root = Node(20)
+root.left = Node(8)
+root.right = Node(22)
+root.left.left = Node(4)
+root.left.right = Node(12)
+root.right.left = Node(10)
+root.right.right = Node(14)
+</code></pre>
+
+
+Title: Not able to get my head around this python
+Tags: <python><algorithm><data-structures>
+Body: <p>I just implemented a hierarchical clustering  by following the documentation here: <a href="http://www.mathworks.com/help/stats/hierarchical-clustering.html?s_tid=doc_12b" rel="nofollow noreferrer">http://www.mathworks.com/help/stats/hierarchical-clustering.html?s_tid=doc_12b</a></p>
+
+<p>So, let me try to put down what I am trying to do.
+Take a look at the following figure:</p>
+
+<p><img src="https://i.sstatic.net/ADEJL.png" alt="dendogram"></p>
+
+<p>Now, this dendogram is generated from the following data:</p>
+
+<pre><code>                         node1        node2         dist(node1,node2)   num_elems
+assigning index  **37  to  [ 16.          26**.           1.14749118   2.        ]
+assigning index  38  to  [ 4.          7.          1.20402602  2.        ]
+assigning index  39  to  [ 13.          29.           1.44708015   2.        ]
+assigning index  40  to  [ 12.          18.           1.45827365   2.        ]
+assigning index  41  to  [ 10.          34.           1.49607538   2.        ]
+assigning index  42  to  [ 17.          38.           1.52565922   3.        ]
+assigning index  43  to  [  8.          25.           1.58919037   2.        ]
+assigning index  44  to  [  3.          40.           1.60231007   3.        ]
+assigning index  45  to  [  6.          42.           1.65755731   4.        ]
+assigning index  46  to  [ 15.          23.           1.77770844   2.        ]
+assigning index  47  to  [ 24.          33.           1.77771082   2.        ]
+assigning index  48  to  [ 20.          35.           1.81301111   2.        ]
+assigning index  49  to  [ 19.         48.          1.9191061   3.       ]
+assigning index  50  to  [  0.          44.           1.94238609   4.        ]
+assigning index  51  to  [  2.         36.          2.0444266   2.       ]
+assigning index  52  to  [ 39.          45.           2.11667375   6.        ]
+assigning index  53  to  [ 32.          43.           2.17132916   3.        ]
+assigning index  54  to  [ 21.         41.          2.2882061   3.       ]
+assigning index  55  to  [  9.          30.           2.34492327   2.        ]
+assigning index  56  to  [  5.          51.           2.38383321   3.        ]
+assigning index  57  to  [ 46.          52.           2.42100025   8.        ]
+assigning index  58  to  [ **28.          37**.           2.48365024   3.        ]
+assigning index  59  to  [ 50.          53.           2.57305009   7.        ]
+assigning index  60  to  [ 49.          57.           2.69459675  11.        ]
+assigning index  61  to  [ 11.          54.           2.75669475   4.        ]
+assigning index  62  to  [ 22.          27.           2.77163751   2.        ]
+assigning index  63  to  [ 47.          55.           2.79303418   4.        ]
+assigning index  64  to  [ 14.          60.           2.88015327  12.        ]
+assigning index  65  to  [ 56.          59.           2.95413905  10.        ]
+assigning index  66  to  [ 61.          65.           3.12615829  14.        ]
+assigning index  67  to  [ 64.          66.           3.28846304  26.        ]
+assigning index  68  to  [ 31.         58.          3.3282066   4.       ]
+assigning index  69  to  [ 63.          67.           3.47397104  30.        ]
+assigning index  70  to  [ 62.          68.           3.63807605   6.        ]
+assigning index  71  to  [  1.          69.           4.09465969  31.        ]
+assigning index  72  to  [ 70.          71.           4.74129435  37.     
+</code></pre>
+
+<p>So basically, there are 37 points in my data same indexed from 0-36..Now, when I see the first element in this list... I assign i  + len(thiscompletelist) + 1
+So for example, when the id is 37 seen again in future iterations, then that basically means that it is linked to a branch as well.
+I used matlab to generate this image. But I want to query this information as <code>query_node(node_id)</code> such that it returns me a list by level.. such that... on <code>query_node(37)</code> I get</p>
+
+<pre><code>{ "left": {"level":1 {"id": 28}} , "right":{"level":0 {"left" :"id":16},"right":{"id":26}}}
+</code></pre>
+
+<p>Actually.. I dont even know what is the right data structure to do this.. 
+Basically I want to query by node and gain some insight on what does the structure of this dendogram looks like when I am standing on that node and looking below. :(</p>
+
+<p>EDIT 1:</p>
+
+<p>*OOH I didn't knew that you wont be able to zoom the image.. basically the fourth element from the left is 28 and the green entry is the first row of the data.. </p>
+
+<p>So fourth vertical line on dendogram represents 28</p>
+
+<p>Next to that line (the first green line) represents 16</p>
+
+<p>and next to that line (the second green line) represents 26*</p>
+
+
+Answer: <p>Well it's always good to build upon something already existing so take a look at <a href="http://docs.scipy.org/doc/scipy/reference/generated/scipy.cluster.hierarchy.dendrogram.html#scipy.cluster.hierarchy.dendrogram" rel="nofollow">dendrogram in scipy</a>.</p>
+
+
+Title: finding out common words in various documents python
+Tags: <python><algorithm>
+Body: <p>I have a csv file which is something like this:</p>
+
+<pre><code> book_store_id  book_price   name
+
+ 1              200.0        foo
+ 1              320.0        bar
+ 2              220.0        foobar
+ 2              280.0        foo
+</code></pre>
+
+<p>So.. this is a huge list..</p>
+
+<p>Now I am trying to find out that if the input is "foo"</p>
+
+<p>then since bookstore id 1 has "foo" marked lowest price, then I want to return "book_store" 1</p>
+
+<p>Now How I am doing this is creating an inverted index which returns something like</p>
+
+<pre><code>foo:1,2 
+bar:1
+foobar:2
+</code></pre>
+
+<p>and so on, and then a seperate dictionary where I am maintaining the price of book in a store.. but is this the best way out to solve this out.</p>
+
+<p>What is the most efficient way to solve this problem in python?</p>
+
+
+Answer: <p>I would create a third data structure (python dict, or database table or whatever).</p>
+
+<p>the data structures key should be the name (assuming name is unique).</p>
+
+<p>The value this "name" key points at should be the minimum price.</p>
+
+<p>Every time you insert a new book, or update the price of a book, look up the books minimum price in the third data structure, if it is less than the minimum price, set the new minimum price.</p>
+
+<p>Don't forget, if you delete a book, or increase its price, make sure you update the minimum.
+(you could add another column so each book has a boolean "is current minimum". Then on price increase you only need to update the minimum if this is true.</p>
+
+<p>The problem is, then you need to find the next best minimum when you remove the old minimum.</p>
+
+<p>This is where it's good to have a heapq</p>
+
+<p><strong>python has a nice implementation of heapq</strong> here:
+<a href="http://docs.python.org/library/heapq.html" rel="nofollow">http://docs.python.org/library/heapq.html</a></p>
+
+<p>Otherwise you have to loop through all values to find the new minimum upon every price increase, or you have to store the 5 best prices each time, say.</p>
+
+<p>have fun :)</p>
+
+
+Title: Removing numbers from strings
+Tags: <python><algorithm><nlp>
+Body: <p>So, I am working with a text file on which I am doing the following operations on the string</p>
+
+<pre><code>     def string_operations(string):
+
+        1) lowercase
+        2) remove integers from string
+        3) remove symbols
+        4) stemming
+</code></pre>
+
+<p>After this, I am still left with strings like:</p>
+
+<pre><code>  durham 28x23
+</code></pre>
+
+<p>I see the flaw in my approach but would like to know if there is a good, fast way to identify if there is a numeric value attached with the string.</p>
+
+<p>So in the above example, I want the output to be</p>
+
+<pre><code>  durham
+</code></pre>
+
+<p>Another example:</p>
+
+<pre><code> 21st ammendment
+</code></pre>
+
+<p>Should give:</p>
+
+<pre><code>ammendment
+</code></pre>
+
+<p>So how do I deal with this stuff?</p>
+
+
+Answer: <p>If you requirement is, "remove any terms that start with a digit", you could do something like this:</p>
+
+<pre><code>def removeNumerics(s):
+  return ' '.join([term for term in s.split() if not term[0].isdigit()])
+</code></pre>
+
+<p>This splits the string on whitespace and then joins with a space all the terms that do not start with a number.</p>
+
+<p>And it works like this:</p>
+
+<pre><code>&gt;&gt;&gt; removeNumerics('21st amendment')
+'amendment'
+&gt;&gt;&gt; removeNumerics('durham 28x23')
+'durham'
+</code></pre>
+
+<p>If this isn't what you're looking for, maybe show some explicit examples in your questions (showing both the initial string and your desired result).</p>
+
+
+Title: efficiently do weighted count the elements in the list
+Tags: <python><algorithm>
+Body: <p>So I have a python dict like:</p>
+
+<pre><code> 1:[ "red","blue","green"]
+ 2: ["blue","blue","red"]..
+</code></pre>
+
+<p>and so on.</p>
+
+<p>and then i have another python dict:
+score_dict = {</p>
+
+<pre><code> pid: weight
+ 1: 2
+ 2: 20
+ ...
+}
+</code></pre>
+
+<p>So, what i want is.. 
+in the first dict, count number of times two colors occur together.
+and so on.
+But that count be multiplied by their weight.</p>
+
+<p>For example:</p>
+
+<p>I want to find out how many times red an blue occured together in this list:</p>
+
+<p>so for pid 1
+   red and blue occurs once.</p>
+
+<pre><code> so this is (1*2) # 2 comes from the score_dict as pid1 has a weight 2
+</code></pre>
+
+<p>and then for second</p>
+
+<p>there are two blue, red pairs I can form</p>
+
+<pre><code>so this is (1*20) + (1*20)
+</code></pre>
+
+<p>So total score for blue and red occuring together is 2 + 20 + 20 = 42</p>
+
+<p>Also, how do i extend it to 3 colors?</p>
+
+<p>Like if i have to find out "red" "blue" and " green" occuring together?</p>
+
+
+Answer: <pre><code>from collections import Counter
+
+dict1 = {1:[ "red","blue","green"], 2: ["blue","blue","red"]}
+
+weight = {1: 2, 2: 20}
+
+score = 0
+
+for k,v in dict1.iteritems():
+    score += weight[k] * Counter(v)["red"] * Counter(v)["blue"]
+</code></pre>
+
+<p>Result:</p>
+
+<pre><code>&gt;&gt;&gt; score
+42
+</code></pre>
+
+<p>The last part of my code could be rewritten as generator comprehension:</p>
+
+<pre><code>score = sum(weight[k] * Counter(v)["red"] * Counter(v)["blue"] for k,v in dict1.iteritems())
+</code></pre>
+
+

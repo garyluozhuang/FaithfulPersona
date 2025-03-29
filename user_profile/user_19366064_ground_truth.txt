@@ -1,0 +1,295 @@
+Title: Leetcode: Stone Game (How can I code it differently)
+Tags: <python><algorithm><math><dynamic-programming>
+Body: <p>Problem statement:</p>
+<blockquote>
+<p>Alice and Bob play a game with piles of stones. There are an even number of piles arranged in a row, and each pile has a positive integer number of stones piles[i].</p>
+<p>The objective of the game is to end with the most stones. The total number of stones across all the piles is odd, so there are no ties.</p>
+<p>Alice and Bob take turns, with Alice starting first. Each turn, a player takes the entire pile of stones either from the beginning or from the end of the row. This continues until there are no more piles left, at which point the person with the most stones wins.</p>
+<p>Assuming Alice and Bob play optimally, return true if Alice wins the game, or false if Bob wins.</p>
+</blockquote>
+<p>Here is my implementation:</p>
+<pre><code>def stoneGame(self, piles: List[int]) -&gt; bool:
+        # return the the score difference between alice and bob(alice - bob)
+        def dfs(turn, i, j):
+            if i &gt; j: #no more stone left
+                return 0
+            
+            if turn == &quot;alice&quot;: #alice tries to maximize her score
+                choice1 = piles[i] + dfs(&quot;bob&quot;, i+1, j)
+                choice2 = piles[j] + dfs(&quot;bob&quot;, i, j-1)
+                return max(choice1, choice2)
+            
+            if turn == &quot;bob&quot;: #bob tries to minimize alice's score, bob's score is negative because I want to subtract it from alice
+                choice1 = -piles[i] + dfs(&quot;alice&quot;, i+1, j)
+                choice2 = -piles[j] + dfs(&quot;alice&quot;, i, j-1)
+                return min(choice1, choice2) #take the smallest and subtract it from alice. 
+        
+        
+        return (dfs(&quot;alice&quot;, 0, len(piles)-1)) &gt; 0
+        #if alice - bob &gt; 0, that means alice has more points so she wins
+</code></pre>
+<p>I solve it by calculating the net different between alice and bob. How can I change my code so that I'm able to record alice's and bob's score instead of just keeping track of their difference.</p>
+
+
+Answer: <p>There's an O(1) solution: Alice always wins.</p>
+<p>Imagine the piles are numbered from 1 to n for n some even number.</p>
+<p>Then, either the even piles or the odd piles collectively have more stones.</p>
+<p>Whichever parity has more stones is what Alice always picks, and Bob is forced to pick the other parity.</p>
+<p>Now, while Alice needs to do O(n) work to execute this strategy, knowing that she has a winning strategy and so will win takes no work.</p>
+
+
+Title: Why does adding DP to my recursion make it stop working correctly?
+Tags: <python><algorithm><dynamic-programming>
+Body: <p>Can someone please tell me why the two codes give different outputs. Aren't they the same code with two different implementations (one is brute force and the other one is using Dynamic Programming).</p>
+<p>Program Description: Given a m x n grid filled with non-negative numbers, find a path from top left to bottom right, which minimizes the sum of all numbers along its path.</p>
+<pre><code>def minPathSum_dp(grid):
+        def dfs(i, j, pathSum):
+            if (i, j) in dp:
+                return dp[(i, j)]
+            
+            if i == len(grid)-1 and j == len(grid[i])-1:
+                return pathSum + grid[i][j]
+
+            if i == len(grid)-1:
+                return dfs(i, j+1, pathSum + grid[i][j])
+            
+            if j == len(grid[i])-1:
+                return dfs(i+1, j, pathSum + grid[i][j])
+            
+            path1 = dfs(i+1, j, pathSum + grid[i][j])
+            path2 = dfs(i, j+1, pathSum + grid[i][j])
+            dp[(i, j)] = min(path1, path2)
+            return dp[(i, j)]
+        
+        dp = {}
+        return dfs(0, 0, 0) 
+
+def minPathSum_bf(grid):
+        def dfs(i, j, pathSum):          
+            if i == len(grid)-1 and j == len(grid[i])-1:
+                return pathSum + grid[i][j]
+            
+            if i == len(grid)-1:
+                return dfs(i, j+1, pathSum + grid[i][j])
+            
+            if j == len(grid[i])-1:
+                return dfs(i+1, j, pathSum + grid[i][j])
+            
+            path1 = dfs(i+1, j, pathSum + grid[i][j])
+            path2 = dfs(i, j+1, pathSum + grid[i][j])
+            return min(path1, path2)
+        
+        return dfs(0, 0, 0) 
+
+grid = [[1,4,8,6,2,2,1,7],[4,7,3,1,4,5,5,1],[8,8,2,1,1,8,0,1],[8,9,2,9,8,0,8,9],[5,7,5,7,1,8,5,5],[7,0,9,4,5,6,5,6],[4,9,9,7,9,1,9,0]]
+
+UPDATED: WORKING SOLUTION
+
+def minPathSum(self, grid: List[List[int]]) -&gt; int:
+        def dfs(i, j):
+            if (i, j) in dp:
+                return dp[(i, j)]
+            
+            if i == len(grid)-1 and j == len(grid[i])-1:
+                return grid[i][j]
+            
+            if i == len(grid)-1:
+                dp[(i, j)] = grid[i][j] + dfs(i, j+1)
+                return dp[(i, j)]
+            
+            if j == len(grid[i])-1:
+                dp[(i, j)] = grid[i][j] + dfs(i+1, j)
+                return dp[(i, j)]
+            
+            path1 = grid[i][j] + dfs(i+1, j)
+            path2 = grid[i][j] + dfs(i, j+1)
+            dp[(i, j)] = min(path1, path2)
+            return dp[(i, j)]
+        
+        dp = {}
+        return dfs(0, 0)
+
+print(minPathSum_dp(grid))
+print(minPathSum_bf(grid))
+</code></pre>
+
+
+Answer: <p>(A quick terminology note - what you’re doing here seems to me to be closer to <em>memoization</em> than dynamic programming, since you’re computing things top-down rather than bottom-up.)</p>
+<p>Your recursive function has three parameters. The first two are “where am I right now?” The third is “what is the sum along the path that’s taken me here so far?” So, for example, calling <code>dfs(row, col, 137)</code> gives you the best cost you can reach if you are at (row, col) and the cost of the current path is 137, and calling <code>dfs(row, col, 42)</code> gives you the cost if your current path has cost 42.</p>
+<p>However, your DP/memoization table is only keyed on the first two parameters. This means that the value you’re writing down at position (row, col) would need to be the answer for both <code>dfs(row, col, 137)</code> and <code>dfs(row, col, 42)</code>. But that’s clearly not going to work.</p>
+<p>You could technically fix this by having your DP/memoization table write down answers keyed by all three parameters. However, that’s not going to make things run quickly, since you’re unlikely to end up with two or more recursive calls being made to the same position in the grid with the same prefix sum.</p>
+<p>The more proper way to fix this is to change your recursive strategy so that you don’t need that third parameter of the path cost up to your current point. By having that parameter, each recursive call has to be aware of the specific call chain that got it there. Instead, see if you can find a way to make the recursive function just take in a (row, col) pair and return the best cost from that point to the destination. Once you’ve gotten that working, you can add in memoization and it’ll work just fine.</p>
+
+
+Title: Return immediately for recursive calls
+Tags: <python><algorithm><recursion><backtracking>
+Body: <p>Problem Statement:
+You are given an integer array nums. You are initially positioned at the array's first index, and each element in the array represents your maximum jump length at that position. Return true if you can reach the last index, or false otherwise.</p>
+<p>How can I change my code so that it returns immediately when I have found a path that works for this problem instead of going through all the recursive calls that I have made previously</p>
+<pre><code>def canJump(self, nums: List[int]) -&gt; bool:
+    solve = [False]
+    def backtrack(i):
+        if solve[0] == True:
+            return
+        
+        if i == len(nums)-1:
+            solve[0] = True
+            return
+        
+        if i &gt;= len(nums) or nums[i] == 0:
+            return
+        
+        for x in range(1, nums[i]+1):
+            backtrack(i+x)
+    
+    backtrack(0)
+    return solve[0]
+</code></pre>
+
+
+Answer: <h2>General Form of a Recursive Function</h2>
+<p>The general form of a recursive function has two mutually exclusive types of conditions that can be met on each iteration of the recursion. These are either:</p>
+<ol>
+<li>terminal conditions, or</li>
+<li>non-terminal conditions.</li>
+</ol>
+<p>Both types of condition contain a return statement.</p>
+<h3>Terminal Conditions</h3>
+<p>The return statement in terminal conditions typically takes the form <code>return &lt;value&gt;</code>.</p>
+<p>The solution to the problem you are trying to solve requires two possible terminal conditions:</p>
+<ol>
+<li>The case where you know you can reach the last index. <code>return True</code></li>
+<li>The case where you know you can NOT reach the last index. <code>return False</code></li>
+</ol>
+<h3>Non-Terminal Conditions</h3>
+<p>The non-terminal condition will occur on iterations where neither of the terminal cases are met. In this situation, you will call the recursive function and return what it returns.</p>
+<p><a href="https://stackoverflow.com/a/34156109/1820618">This answer</a> covers terminal and non-terminal conditions in more detail.</p>
+<h2>Example</h2>
+<p>Consider a recursive function that sums the numbers of an array.</p>
+<pre class="lang-py prettyprint-override"><code>def sum(position, array, end):
+    if(position == end): # terminal condition
+        return 0 
+    else: # non-terminal condition
+        return array[position] + sum(position+1, array, end) 
+</code></pre>
+<h2>Another Example</h2>
+<p>Depending on any constraints to your problem that I might have missed, a solution might be the following:</p>
+<pre class="lang-py prettyprint-override"><code>def jump(current_position, nums, finish_line):
+    &quot;&quot;&quot;
+    greedy algorithm: 
+    choose the next position with the largest sum of (jump_range + index)    
+    &quot;&quot;&quot;
+    jump_range = nums[current_position]
+    choice = current_position + jump_range
+
+    if(jump_range == 0): # terminal condition
+        return False 
+    if(choice &gt;= finish_line): # terminal condition
+        return True 
+    else: # non-terminal condition
+        utility = 0
+        
+        for next_position in range(current_position+1, jump_range+1):
+            next_jump_range = nums[next_position]
+            
+            if(utility &lt;= next_position + next_jump_range):
+                utility = next_position + next_jump_range
+                choice = next_position
+        
+        return jump(choice, nums, finish_line)
+
+
+input1 = [2,0,0,10,3]
+input2 = [2,3,0,10,3]
+current_position = 0
+
+finish_line = len(input1)
+print(jump(0, input1, finish_line)) # False
+
+finish_line = len(input2)
+print(jump(0, input2, finish_line)) # True
+</code></pre>
+<p>The most noteworthy difference from your solution is that <strong>return statements always return a value</strong>.</p>
+
+
+Title: Permutation implementation
+Tags: <python><algorithm><backtracking>
+Body: <p>permutation_str works fine but permutation_arr doesn't output the correct answer. I don't see why the two functions are generating different outputs given the fact that they have the same implementation. Is there something that I'm missing?</p>
+<pre><code>def permutation_arr(res, arr):
+    if len(arr) == 0:
+        print(res)
+    
+    for i in range(len(arr)):
+        res.append(arr[i])
+        permutation_arr(res, arr[:i] + arr[i+1:])
+        res = res[:-1]
+
+permutation_arr([], [1,2,3])
+
+def permutation_str(res, str):
+    if len(str) == 0:
+        print(res)
+    
+    for i in range(len(str)):
+        res = res + str[i]
+        permutation_str(res, str[:i] + str[i+1:])
+        res = res[:-1]
+
+permutation_str(&quot;&quot;, &quot;123&quot;)
+</code></pre>
+
+
+Answer: <p>The right way to do is remove the last element using <code>pop</code> after you are done with a recursive call. Don't create a copy again. <code>pop</code> won't throw an empty list exception because you are doing it after <code>append</code>. The res[:-1] creates a different list and you don't want to change the list when passing along in your recursive calls, you'd want the same list to be passed all along the recursion.</p>
+<pre><code>def permutation_arr(res, arr):
+    if len(arr) == 0:
+        print(res)
+    
+    for i in range(len(arr)):
+        res.append(arr[i])
+        permutation_arr(res, arr[:i] + arr[i+1:])
+        res.pop()
+
+permutation_arr([], [1,2,3])
+</code></pre>
+<p>output:</p>
+<pre><code>[1, 2, 3]
+[1, 3, 2]
+[2, 1, 3]
+[2, 3, 1]
+[3, 1, 2]
+[3, 2, 1]
+</code></pre>
+
+
+Title: What is wrong with my implementation of the knapsack problem
+Tags: <python><algorithm>
+Body: <p>items = [[profit, weight]...]</p>
+<pre><code>items = [[44,92], [46,4], [90,43], [72,83], [91,84], [40,68], [75,92], [35,82], [8,6], [54,44], [78,32], [40,18], [77,56], [15,83], [61,25], [17,96], [75,70], [29,48], [75,14], [63,58]]
+max_weight = 269
+def knapsack_bruteforce(items, max_weight):
+    def backtrack(i, curr_profit, curr_weight):       
+        if(i+1 &gt;= len(items) or curr_weight + items[i+1][1] &gt; max_weight):
+            return curr_profit
+            
+        return max(backtrack(i+1, curr_profit + items[i+1][0], curr_weight + items[i+1][1]), backtrack(i+1, curr_profit, curr_weight))
+        
+    return backtrack(-1, 0, 0)
+
+</code></pre>
+<p>knapsack_bruteforce(items, max_weight) should return 550 as the maximum profit but I'm getting
+528 instead.</p>
+
+
+Answer: <p>The problem is in the second part of the <code>if</code> condition:</p>
+<pre><code>if(i+1 &gt;= len(items) or curr_weight + items[i+1][1] &gt; max_weight):
+    return curr_profit
+</code></pre>
+<p>When the second condition is true, you should still allow the <em>second</em> recursive call to be done -- the one where this weight is not included -- as there might still be a way to add another item (that has less weight). But as you return immediately here, that attempt is never made.</p>
+<p>Without changing more than necessary to your code, you can fix this, by bailing out (returning a negative number) when the weight excess has <em>already been made</em>. So split your <code>if</code> into two:</p>
+<pre><code>if curr_weight &gt; max_weight:
+    return -1
+if i+1 &gt;= len(items):
+    return curr_profit
+</code></pre>
+
+

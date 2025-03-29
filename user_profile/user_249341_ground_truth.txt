@@ -1,0 +1,156 @@
+Title: Name of this algorithm, and is there a numpy/scipy implementation of it?
+Tags: <python><algorithm><numpy><scipy>
+Body: <h1>Motivation:</h1>
+
+<p>I've seen this algorithm described, and I'd rather not reinvent the wheel if a standard implementation exists. I've also learned that if there is a scipy/numpy implementation, it is usually much faster than anything I can roll myself in python.</p>
+
+<h1>Algorithm Description</h1>
+
+<p>I have a large number of points on the plane (several million). Starting with a large box that encompasses all the points, I'd like to continuously subdivide the box into equal area sub-boxes. The subdivision continues recursively while there are at least 1,000 points in the sub-box. The algorithm returns a tree that describes the subdivisions and the mapping of the points to each leaf node of the tree.</p>
+
+<p>What is the name of this algorithm (something like divide and conquer?), and is there a standard method of doing it when given a 2D numpy array of points?</p>
+
+
+Answer: <p>It's called a <a href="http://en.wikipedia.org/wiki/Quadtree" rel="nofollow noreferrer">quadtree</a> partition. As far as Python code, see <a href="https://stackoverflow.com/questions/2298517/are-any-of-these-quad-tree-libraries-any-good">this thread</a>.</p>
+<p>As per the comment by Joe Kington, take a look at <code>scipy.spatial.KDTree</code> and/or <code>scipy.spatial.cKDTree</code>.</p>
+
+
+Title: Conditional sum over matrices in python/numpy
+Tags: <python><algorithm><numpy>
+Body: <p>I have two numpy arrays <code>X</code> and <code>W</code> each with shape <code>(N,N)</code> that result from the end of a calculation. Subdivide the range of <code>X</code> into equal intervals <code>[min(X), min(X)+delta, min(X)+2*delta,..., max(X)]</code>. I'd like to know, given an interval starting point <code>v</code>, the total of the corresponding <code>W</code> values:</p>
+
+<pre><code>idx = (X&gt;=v) &amp; (X&lt;(v+delta))
+W[idx].sum()
+</code></pre>
+
+<p>I need this sum for all starting intervals (ie. the entire range of <code>X</code>) and I need to do this for many different matrices <code>X</code> and <code>W</code>. Profiling has determined that this is the bottleneck. What I'm doing now amounts to:</p>
+
+<pre><code>W_total = []
+for v0, v1 in zip(X, X[1:]):
+    idx = (X&gt;=x0) &amp; (X&lt;x1)
+    W_total.append( W[idx].sum() )
+</code></pre>
+
+<p>How can I speed this up?</p>
+
+
+Answer: <p>You can use <code>numpy.histogram()</code> to compute all those sums in a single operation:</p>
+
+<pre><code>sums, bins = numpy.histogram(
+    X, bins=numpy.arange(X.min(), X.max(), delta), weights=W)
+</code></pre>
+
+
+Title: itertools dice rolls: doubles roll twice
+Tags: <python><algorithm><python-itertools><python-collections>
+Body: <p>I'm trying to learn the Python library <code>itertools</code> and I thought a good test would be the simulation of dice rolls. It's easy to generate all possible rolls using <code>product</code> and counting the number of possible ways of doing so with the <code>collections</code> library. I'm trying to solve the problem that comes up in games like <a href="http://en.wikipedia.org/wiki/Monopoly_%28game%29" rel="nofollow">Monopoly</a>: when doubles are rolled, you roll again and your final total is the sum of the two rolls.</p>
+
+<p>Below is my starting attempt at solving the problem: two Counters, one for doubles and the other for not doubles. I'm not sure if there is a good way to combine them or if the two Counters are even the best way of doing it.</p>
+
+<p><strong>I'm looking for a slick way of solving (by enumeration) the dice roll problem with doubles using itertools and collections.</strong></p>
+
+<pre><code>import numpy as np
+from collections import Counter
+from itertools import *
+
+die_n = 2
+max_num = 6
+
+die = np.arange(1,max_num+1)
+C0,C1  = Counter(), Counter()
+
+for roll in product(die,repeat=die_n):
+    if len(set(roll)) &gt; 1: C0[sum(roll)] += 1
+    else: C1[sum(roll)] += 1
+</code></pre>
+
+
+Answer: <p>Leaving out <code>numpy</code> here for the sake of simplicity:</p>
+
+<p>First, generate all rolls, be it single or double rolls:</p>
+
+<pre><code>from itertools import product
+from collections import Counter
+
+def enumerate_rolls(die_n=2, max_num=6):
+    for roll in product(range(1, max_num + 1), repeat=die_n):
+        if len(set(roll)) != 1:
+            yield roll
+        else:
+            for second_roll in product(range(1, max_num + 1), repeat=die_n):
+                yield roll + second_roll
+</code></pre>
+
+<p>Now a few tests:</p>
+
+<pre><code>print(len(list(enumerate_rolls()))) # 36 + 6 * 36 - 6 = 246
+A = list(enumerate_rolls(5, 4))
+print(len(A)) # 4 ** 5 + 4 * 4 ** 5 - 4 = 5116
+print(A[1020:1030]) # some double rolls (of five dice each!) and some single rolls
+</code></pre>
+
+<p>and the result:</p>
+
+<pre><code>246
+5116
+[(1, 1, 1, 1, 1, 4, 4, 4, 4, 1), (1, 1, 1, 1, 1, 4, 4, 4, 4, 2), (1, 1, 1, 1, 1, 4, 4, 4, 4, 3), (1, 1, 1, 1, 1, 4, 4, 4, 4, 4), (1, 1, 1, 1, 2), (1, 1, 1, 1, 3), (1, 1, 1, 1, 4), (1, 1, 1, 2, 1), (1, 1, 1, 2, 2), (1, 1, 1, 2, 3)]
+</code></pre>
+
+<p>To get the totals use the special <code>Counter</code> capabilities:</p>
+
+<pre><code>def total_counts(die_n=2, max_num=6):
+    return Counter(map(sum, enumerate_rolls(die_n, max_num)))
+
+print(total_counts())
+print(total_counts(5, 4))
+</code></pre>
+
+<p>Results:</p>
+
+<pre><code>Counter({11: 18, 13: 18, 14: 18, 15: 18, 12: 17, 16: 17, 9: 16, 10: 16, 17: 16, 18: 14, 8: 13, 7: 12, 19: 12, 20: 9, 6: 8, 5: 6, 21: 6, 22: 4, 4: 3, 3: 2, 23: 2, 24: 1})
+Counter({16: 205, 17: 205, 18: 205, 19: 205, 21: 205, 22: 205, 23: 205, 24: 205, 26: 205, 27: 205, 28: 205, 29: 205, 25: 204, 20: 203, 30: 203, 15: 202, 14: 200, 31: 200, 13: 190, 32: 190, 12: 170, 33: 170, 11: 140, 34: 140, 35: 102, 10: 101, 9: 65, 36: 65, 8: 35, 37: 35, 7: 15, 38: 15, 6: 5, 39: 5, 40: 1})
+</code></pre>
+
+<p><strong>Note:</strong> At this point, there is no way of computing the probability for the totals. You have to know if it is a double roll or a total roll to weigh correctly.</p>
+
+
+Title: Identify contiguous regions in 2D numpy array
+Tags: <python><algorithm><numpy>
+Body: <p>I have a large <code>numpy</code> array that I've applied a filter over. I'd like to identify the contiguous regions in this masked array. Here I'm defining a region to be contiguous if, for any index <code>(x1,y1)</code> to any other index <code>(x2,y2)</code>, they belong to the same region if there is a path of <code>True</code> values along equal integer steps along the axes (diagonals are valid steps).</p>
+
+<p>That may not be as clear as a simple picture. Given the mask:</p>
+
+<pre><code>0010000
+0100000
+0110000
+0000011
+1000010
+</code></pre>
+
+<p>There should be three regions identified such that the output is something like</p>
+
+<pre><code>[ [[0,2],[1,1],[2,1],[2,2]], [[3,5],[3,6],[4,5]], [[4,0]] ]
+</code></pre>
+
+<p>I'd like to use something built into <code>numpy</code>, without resorting to writing my own <a href="http://en.wikipedia.org/wiki/Flood_fill" rel="noreferrer">Flood Fill</a> algorithm. A little bit of research in the docs only turned up a <a href="http://docs.scipy.org/doc/numpy/reference/generated/numpy.ma.flatnotmasked_contiguous.html#numpy.ma.flatnotmasked_contiguous" rel="noreferrer">1D version</a> of what I'm asking.</p>
+
+
+Answer: <p>You're looking for <code>scipy.ndimage.label</code>, more info <a href="https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.label.html" rel="noreferrer">here</a>. <code>label</code> returns an array the same shape as the input where each "unique feature has a unique value", so if you want the indices of the features you can do something like:</p>
+
+<pre><code>labels, numL = label(array)
+label_indices = [(labels == i).nonzero() for i in xrange(1, numL+1)]
+</code></pre>
+
+
+Title: Nash equilibrium in Python
+Tags: <python><algorithm><game-theory>
+Body: <p>Is there a Python library out there that solves for the Nash equilibrium of two-person zero-games? I know the solution can be written down in terms of linear constraints and, in theory, scipy should be able to optimize it. However, for two-person zero-games the solution is exact and unique, but some of the solvers fail to converge for certain problems.</p>
+
+<p>Rather than listing any of the libraries on <a href="http://wiki.python.org/moin/NumericAndScientific/Libraries">Linear programing</a> on the Python website, I would like to know what library would be most effective in terms of ease of use and speed.</p>
+
+
+Answer: <p>Raymond Hettinger wrote <a href="http://code.activestate.com/recipes/496825-game-theory-payoff-matrix-solver/" rel="nofollow">a recipe for solving zero-sum payoff matrices</a>. It should serve your purposes alright.</p>
+
+<p>As for a more general library for solving game theory, there's nothing specifically designed for that. But, like you said, scipy can tackle optimization problems like this. You might be able to do something with <a href="http://pypi.python.org/pypi/garlicsim/0.6.1" rel="nofollow">GarlicSim</a>, which claims to be for "any kind of simulation: Physics, game theory..." but I've never used it before so I can't recommend it.</p>
+
+

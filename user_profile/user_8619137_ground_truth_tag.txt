@@ -1,0 +1,160 @@
+Title: Calculating with items enclosed in list positions (genetic algorithms fitness)
+Tags: <python><python-3.x><list><probability><genetic-algorithm>
+Body: <pre><code>population = [[[0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1], [1], [0]],
+ [[0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1], [3], [1]],
+ [[0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0], [4], [2]],
+ [[1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0], [3], [3]]]
+
+def ProbabilityList2(population):
+    fitness = [chromosome[1] for chromosome in population]
+    total_weight=sum(fitness)
+    relative_fitness= [(chromosome[1]+1)/total_weight for chromosome in population]
+    return (relative_fitness)
+</code></pre>
+
+<p>I am trying to return a list based on proportional fitness values, in the following logic: <code>[[chromosome],[fitness],[counter]]</code>. All I want to do is to generate a list of probabilities based in this operation for all items (individuals) in the list, but I get the error: </p>
+
+<pre><code>TypeError: unsupported operand type(s) for +: 'int' and 'list'
+</code></pre>
+
+<p>I solved that before using a dictionary, however during the loops of the program I get duplicated entries and the selection function crashes, since the number of individuals in the population and the probabilities (indexed by position) are uneven. Any thoughts on how I can calculate it in this format?</p>
+
+
+Title: Mutation of a binary vector inside a list
+Tags: <python><python-3.x><genetic-algorithm><mutation>
+Body: <pre><code>import random 
+
+chosen=[[[0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1], [3], [0]], 
+        [[0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0], [5], [2]]]    
+
+def mutation(chosen, mp):
+    for i in range(len(chosen)):
+        if random.random() &lt; mp:
+            chosen[0][i] = type(chosen[0][i])(not chosen[0][i])
+    return (chosen)
+
+mp=0.9 #probability
+mutated=mutation(chosen, mp)
+print (mutated)
+</code></pre>
+
+<p>Assuming that <code>chosen</code> stands for the selected individuals in a population, I am trying to mutate the binary vectors (at random position) based on the given probability. and return it in a different list (I am still not sure if the extra list is necessary). </p>
+
+<p>It's not really working as expected, anyone knows what could be wrong in the code? </p>
+
+<pre><code>  File "&lt;ipython-input-229-91852a46fa82&gt;", line 9, in mutation
+    chosen[0][i] = type(chosen[0][i])(not chosen[0][i])
+
+TypeError: 'bool' object is not iterable
+</code></pre>
+
+<p>Also, if someone knows a more convenient way for this it would be totally welcome. </p>
+
+<p>Thank you!</p>
+
+
+Title: Roulette Wheel Selection for non-ordered fitness values
+Tags: <python><python-3.x><selection><genetic-algorithm>
+Body: <p>I need to have a fitness proportionate selection approach to a GA, however my population cant loose the structure (order), in this case while generating the probabilities, I believe the individuals get the wrong weights, the program is: </p>
+
+<pre><code>population=[[[0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1], [6], [0]], 
+[[0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1], [4], [1]], 
+[[0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0], [6], [2]],
+[[1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0], [4], [3]]]
+
+popultion_d={'0,0,1,0,1,1,0,1,1,1,1,0,0,0,0,1': 6, 
+'0,0,1,1,1,0,0,1,1,0,1,1,0,0,0,1': 4, 
+'0,1,1,0,1,1,0,0,1,1,1,0,0,1,0,0': 6, 
+'1,0,0,1,1,1,0,0,1,1,0,1,1,0,0,0': 4}
+
+def ProbabilityList(population_d):
+    fitness = population_d.values()
+    total_fit = (sum(fitness))
+    relative_fitness = [f/total_fit for f in fitness]
+    probabilities = [sum(relative_fitness[:i+1]) for i in range(len(relative_fitness))]
+    return (probabilities)
+
+def FitnessProportionateSelection(population, probabilities, number):
+    chosen = []
+    for n in range(number):
+        r = random.random()
+        for (i, individual) in enumerate(population):
+            if r &lt;= probabilities[i]:
+                chosen.append(list(individual))
+                break
+    return chosen
+
+number=2
+</code></pre>
+
+<p>The population element is: [[individual],[fitness],[counter]]</p>
+
+<p>The probabilities function output is: <code>[0.42857142857142855, 0.5714285714285714, 0.8571428571428571, 1.0]</code></p>
+
+<p>What I notice here is that the previous weight is summed up to the next one, not necessarily being in crescent order, so a think a higher weight is given to the cromosome with a lowest fitness.</p>
+
+<p>I dont want to order it because I need to index the lists by position later, so I think I will have wrong matches. </p>
+
+<p>Anyone knows a possible solution, package or different approach to perform a weighted the selection in this case?</p>
+
+<p>p.s: I know the dictionary may be redundant here, but I had several other problems using the list itself.</p>
+
+<p>Edit: I tried to use <code>random.choices()</code> as you can see below (using relative fitness):</p>
+
+<pre><code>def FitnessChoices(population, probabilities, number):
+    return random.choices(population, probabilities, number)
+</code></pre>
+
+<p>But I get this error: <code>TypeError: choices() takes from 2 to 3 positional arguments but 4 were given</code></p>
+
+<p>Thank you!</p>
+
+
+Title: Add 1 to an element inside a list and return a different list
+Tags: <python><python-3.x><list><genetic-algorithm>
+Body: <p>I wrote the following code: </p>
+
+<pre><code>population = [[[0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1], [1], [0]],
+ [[0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1], [3], [1]],
+ [[0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0], [4], [2]],
+ [[1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0], [3], [3]]]
+
+def ManipulateFitness(population):
+    mf=[]
+    populaion_m = population
+    for game in range (0, len(population)):
+        m = [f+1 for f in population[game][1]]
+        mf.append(m)
+        manipulted = [m for f in population[game][1] for m in mf
+        population_m.append(manipulated)
+    return (population_m)
+</code></pre>
+
+<p>What I am trying to do is just adding a 1 to the second element in the list (the third is just a counter)for each chromosome and return the same list with just this different values, but with a different name, since Ill need both later on. I was trying it like this but it didnt work, I managed to generate the values but I wasnt successfull in adding them to the list in the correct places. Any suggestions?</p>
+
+
+Title: Generate probabilities list for fitness proportionate selection (roulette wheel) in genetic algorithms
+Tags: <python><python-3.x><genetic-algorithm><fitness>
+Body: <p>firs of all I apologize if my approach is too dumb or simplistic, I am an economist trying very hard to get into programming, therefore I lack some specific skills. Anyways, I have the following code: </p>
+
+<pre><code>population = [[[0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1], [1], [0]],
+ [[0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1], [3], [1]],
+ [[0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0], [4], [2]],
+ [[1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0], [3], [3]]]
+
+def ProbabilityList(population):
+    fitness = chromosome[2] for chromosome in population
+    manipulated_fitness = fitness + 1
+    total_weight=sum(manipulated_fitness)
+    relative_fitness= [chromosome[1]/total_weight for chromosome in population]
+    probabilities= [sum(relative_fitness) for i in range(len(relative_fitness))]
+    return (probabilities)
+</code></pre>
+
+<p>The logic of the population is <code>[[[individual1],[fitness][counter]],[individual3],[fitness][counter]], and so on...</code> the counter is just a number so I can order the individuals.</p>
+
+<p>So what I need in this case is to create a selection probability list based on the total fitness. I also need to add 1 to the basic fitness, since in the future the value might be zero and I cant use a deterministic selection method (that is, no individuals can have 0 probabilities)</p>
+
+<p>Would anyone know a correct approach to deal with it like this?</p>
+
+

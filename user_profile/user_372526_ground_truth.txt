@@ -1,0 +1,556 @@
+Title: Algorithm: What set of tiles of length N can be used to generate the most amount of Scrabble-valid words?
+Tags: <python><algorithm><scrabble>
+Body: <p>I'm trying to create a function <code>best_tiles</code> which takes in the number of tiles in your hand and returns the set of tiles that allows you to produce the most number of unique English-valid words, assuming that you can only use each tile once.</p>
+<p>For example, with the set of tiles in your hand <code>(A, B, C)</code> you can produce the words, CAB, BAC, AB, and BA (all of these are English words), so you can spell 4 unique words with that set. With <code>(B, A, A)</code>, you can spell 5 words: ABA, BAA, AA, AB, and BA. The goal is to find the set of letters which allows you to spell the most number of English-Valid words (without replacement).</p>
+<p>So if 5 was the maximum number of words that could be spelled with any combination of letters for N = 3, running <code>best_tiles( n = 3 )</code> would return <code>B, A, A</code>.</p>
+<p>I'm wondering how to implement this efficiently? My current approach doesn't scale well at all with number of letters.</p>
+<p>I read in a wordlist. In this case, I'm using enable.txt here: <a href="https://www.wordgamedictionary.com/enable/" rel="nofollow noreferrer">https://www.wordgamedictionary.com/enable/</a></p>
+<pre><code>import os
+path = &quot;enable.txt&quot;
+words = []
+with open(path , encoding='utf8') as f: 
+    for values in f:
+        words.append(list(values.strip().upper()))
+</code></pre>
+<p>I create a function <code>word_in_tiles</code> h/t smack89 which returns whether it is possible to construct a word given a tile set:</p>
+<pre><code>def word_in_tiles(word, tiles):
+  tiles_counter = collections.Counter(tiles)
+  return all(tiles_counter.get(ch, 0) == cnt for ch,cnt in 
+  collections.Counter(word).items())
+</code></pre>
+<p>I then create a function <code>get_all_words</code> which produces a list of all the possible words one can spell from a word list and a tile set.</p>
+<pre><code>def get_all_words(tile_set, words):
+    # words is a word list
+    return [i for i in words if word_in_tiles(i, tile_set)]
+</code></pre>
+<p>The extremely naive approach for identifying which tileset is the &quot;best&quot; for three letters is the following:</p>
+<p>I first create a list of every possible combination for a given length. So for length 3, I'd do:</p>
+<pre><code>import string
+import itertools 
+
+letters = string.ascii_lowercase
+all_three_letter_combinations = list(itertools.combinations_with_replacement(letters, 3))
+
+# Create a list of only words that are three letters are less
+three_letter = [i for i in words if len(i) &lt;= 3]
+
+sequence_dict = dict()
+    for i in all_three_letter_combinations:
+        string_test = &quot;&quot;.join(i).upper()
+        sequence_dict[i] = get_all_words(string_test, three_letter)
+</code></pre>
+<p>Then remove the values with no length and sort by the length of the result:</p>
+<pre><code>res = {k: v for k, v in sequence_dict.items() if len(v) &gt;= 1}
+
+def GetMaxLength(res):
+    return max((len(v), v, k) for k, v in res.items())[1:]
+</code></pre>
+<p>GetMaxLength(res)
+You get that, for three letters, the tile-set that produces the most english valid words is <code>T A E</code> which can produce the following words <code>['AE', 'AT', 'ATE', 'EAT', 'ET', 'ETA', 'TA', 'TAE', 'TEA']</code></p>
+<p>I'd like to be able to scale this up to as big as N = 15. What is the best procedure for doing this?</p>
+
+
+Answer: <p>I think this is good enough!</p>
+<p>Here is a log of my code running under PyPy:</p>
+<pre><code>0:00:00.000232
+E
+0:00:00.001251
+ER
+0:00:00.048733
+EAT
+0:00:00.208744
+ESAT
+0:00:00.087425
+ESATL
+0:00:00.132049
+ESARTP
+0:00:00.380296
+ESARTOP
+0:00:01.409129
+ESIARTLP
+0:00:03.433526
+ESIARNTLP
+0:00:10.391252
+ESIARNTOLP
+0:00:25.651012
+ESIARNTOLDP
+0:00:56.642405
+ESIARNTOLCDP
+0:01:57.257293
+ESIARNTOLCDUP
+0:03:55.933906
+ESIARNTOLCDUPM
+0:07:17.146036
+ESIARNTOLCDUPMG
+0:10:14.844347
+ESIARNTOLCDUPMGH
+0:13:34.722600
+ESIARNTOLCDEUPMGH
+0:18:14.215019
+ESIARNTOLCDEUPMGSH
+0:22:47.129284
+ESIARNTOLCDEUPMGSHB
+0:27:56.859511
+ESIARNTOLCDEUPMGSHBYK
+0:46:20.448502
+ESIARNTOLCDEUPMGSHBYAK
+0:57:15.213635
+ESIARNTOLCDEUPMGSHIBYAT
+1:09:55.530180
+ESIARNTOLCDEUPMGSHIBYATF
+1:18:35.209599
+ESIARNTOLCDEUPMGSHIBYATRF
+1:21:54.095119
+ESIARNTOLCDEUPMGSHIBYATRFV
+1:20:16.978411
+ESIARNTOLCDEUPMGSHIBYAOTRFV
+1:14:24.253660
+ESIARNTOLCDEUPMGSHIBYAONTRFV
+1:00:37.405571
+</code></pre>
+<p>The key improvements are these.</p>
+<ol>
+<li>I distinguish not only between letters, but how many times the letter has been seen.  Therefore every letter I can accept or move on.  That was an idea I got while commenting on David Eisenstat's solution.</li>
+<li>From him I also got the idea that pruning trees out that can't lead to an answer controls the growth of the problem surprisingly well.</li>
+<li>The very first solution that I look at is simply all the top letters.  This starts as a pretty good solution so despite it being depth first, we will prune pretty well.</li>
+<li>I am careful to consolidate &quot;exhausted tries&quot; into a single record.  This reduces how much data we have to throw around.</li>
+</ol>
+<p>And here is the code.</p>
+<pre><code>import os
+import datetime
+path = &quot;enable.txt&quot;
+words = []
+with open(path) as f:
+    for values in f:
+        words.append(values.strip().upper())
+
+key_count = {}
+for word in words:
+    seen = {}
+    for letter in word:
+        if letter not in seen:
+            seen[letter] = 0
+        key = (letter, seen[letter])
+        if key not in key_count:
+            key_count[key] = 1
+        else:
+            key_count[key] += 1
+        seen[letter] += 1
+
+
+KEYS = sorted(key_count.keys(), key=lambda key: -key_count[key])
+#print(KEYS)
+#print(len(KEYS))
+KEY_POS = {}
+for i in range(len(KEYS)):
+    KEY_POS[KEYS[i]] = i
+
+# Now we will build a trie.  Every node has a list of words, and a dictionary
+# from the next letter farther in the trie.
+# BUT TRICK:, we will map each word to a sequence of numbers, and those numbers
+# will be indexes into KEYS.  This allows us to use the fact that a second 'e' is
+# unlikely, so we can deal with that efficiently.
+class Trie:
+    def __init__(self, path):
+        self.words = []
+        self.dict = {}
+        self.min_pos = -1
+        self.max_pos = -1
+        self.words = []
+        self.count_words = 0
+        self.path = path
+
+    def add_word (self, word):
+        trie = self
+
+        poses = []
+        seen = {}
+        for letter in word:
+            if letter not in seen:
+                seen[letter] = 0
+            key = (letter, seen[letter])
+            poses.append(KEY_POS[(key)])
+            seen[letter] += 1
+        sorted_poses = sorted(poses);
+        for i in range(len(sorted_poses)):
+            trie.count_words += 1
+            pos = sorted_poses[i]
+            if pos not in trie.dict:
+                trie.dict[pos] = Trie(trie.path + KEYS[pos][0])
+                if trie.max_pos &lt; pos:
+                    trie.max_pos = pos
+            trie = trie.dict[pos]
+        trie.count_words += 1
+        trie.words.append(word)
+
+
+base_trie = Trie('')
+for word in words:
+    base_trie.add_word(word);
+
+def best_solution (size):
+    def solve (subset, pos, best, partial):
+        found = sum(x[0] for x in partial)
+        upper_bound = sum(x[1] for x in partial)
+        if size &lt;= len(subset) or upper_bound &lt; best or len(KEYS) &lt;= pos:
+            return (found, subset)
+        if best &lt; found:
+            best = found
+        # Figure out our next calculations.
+        partial_include = []
+        partial_exclude = []
+        finalized_found = 0
+        for this_found, this_bound, this_trie in partial:
+            if this_trie is None:
+                # This is a generic record of already emptied tries
+                finalized_found += this_found
+            elif pos in this_trie.dict:
+                include_trie = this_trie.dict[pos]
+                partial_include.append((
+                    this_found + len(include_trie.words),
+                    include_trie.count_words + this_found,
+                    include_trie
+                ))
+                # We included the tally of found words in the previous partial.
+                # So do not double-count by including it again
+                partial_include.append((
+                    0,
+                    this_bound - include_trie.count_words - this_found,
+                    this_trie
+                ))
+                partial_exclude.append((
+                    this_found,
+                    this_bound - include_trie.count_words,
+                    this_trie
+                ))
+            elif this_found == this_bound:
+                finalized_found += this_found
+            else:
+                partial_include.append((
+                    this_found,
+                    this_bound,
+                    this_trie
+                ))
+
+                partial_exclude.append((
+                    this_found,
+                    this_bound,
+                    this_trie
+                ))
+        if 0 &lt; finalized_found:
+            partial_include.append(
+                (finalized_found, finalized_found, None)
+            )
+            partial_exclude.append(
+                (finalized_found, finalized_found, None)
+            )
+
+        found_include, subset_include = solve(subset + [pos], pos+1, best, partial_include)
+        if best &lt; found_include:
+            best = found_include
+        found_exclude, subset_exclude = solve(subset, pos+1, best, partial_exclude)
+        if found_include &lt; found_exclude:
+            return (found_exclude, subset_exclude)
+        else:
+            return (found_include, subset_include)
+
+
+    count, subset = solve([], 0, 0, [(len(base_trie.words), base_trie.count_words, base_trie)])
+    return ''.join([KEYS[x][0] for x in subset])
+
+for i in range(20):
+    start = datetime.datetime.now()
+    print(best_solution(i))
+    print(datetime.datetime.now() - start)
+</code></pre>
+
+
+Title: Given a list of tuples, check to see if it's possible to construct a word in which the second value in the tuple is not consecutively repeated
+Tags: <python><algorithm><tuples>
+Body: <p>Let's say I have a list of tuples like so:</p>
+<pre><code>list_of_tuples = [('A', 'R'), ('B', 'R'), ('C', 'G'), ('D', 'G'), ('E', 'B'), ('D', 'B'), ('R', 'B'), ('F', 'R'), ('V', 'R'), ('A', 'G')]
+</code></pre>
+<p>The second value in each tuple will always either be <code>R</code>, <code>B</code>, or <code>G</code>. I'd like to create a function <code>validate</code> that checks to see if a certain word can be constructed using the letters in the first position of each tuple, but only if the letters in the section position of that tuple are not repeated.</p>
+<p>For example, it's possible to construct the word:</p>
+<p><code>ACE</code> with <code>(A, R)</code>, <code>(C, G)</code> and <code>(E, B)</code> since the second value in each tuple corresponds to <code>RGB</code> which doesn't repeat any letter consecutively.</p>
+<p><code>ACED</code> with <code>(A, R), (C, G), (E, B), and ('D', 'B')</code> is not possible since that would correspond to <code>RGBB</code> in which there is a consecutive B.</p>
+<p>Note that sometimes the same letter can have different letter in its second position, for example:</p>
+<p><code>('A', 'R') and ('A', 'G')</code>. You'd only be able to spell <code>ACE</code> if you selected the first tuple, not the second, otherwise the <code>G</code>'s would repeat.</p>
+<p>Also note that combinations like <code>GBRBG</code> are possible even though the second position letters &quot;repeat&quot; they don't repeat consecutively.</p>
+<p>So I'd like a function that can validate words in the following way:</p>
+<p><code>def validate(submitted_word, list_of_tuples)</code></p>
+<p>One possibility is to construct every possible combination of sequences that are possible with this set and the corresponding sequences that would be produced with the letters in the second sequence, filter out the ones that are valid words, and then filter out the ones that have consecutive repeats of letters, but I worry that will be to inefficient given how big the list of tuples can become.</p>
+
+
+Answer: <p>See below for a self-contained solution and tests:</p>
+<pre class="lang-py prettyprint-override"><code>list_of_tuples = [
+    ('A', 'R'),
+    ('B', 'R'),
+    ('C', 'G'),
+    ('D', 'G'),
+    ('E', 'B'),
+    ('D', 'B'),
+    ('R', 'B'),
+    ('F', 'R'),
+    ('V', 'R'),
+    ('A', 'G')
+]
+
+def validate(submitted_word, list_of_tuples):
+    # Check length of word
+    if len(submitted_word) == 0:
+        raise ValueError(&quot;len(submitted_word) must be &gt; 0&quot;)
+
+    # Initialise options for first character
+    options = [[tup for tup in list_of_tuples if tup[0] == submitted_word[0]]]
+    # Iterate through the rest of the characters
+    for char in submitted_word[1:]:
+        # Initialise set of characters in second position of previous tuple
+        forbidden_chars = set(tup[1] for tup in options[-1])
+        # Add valid options for the next character
+        options.append([
+            tup
+            for tup in list_of_tuples
+            if (tup[0] == char) and len(forbidden_chars - set(tup[1])) &gt; 0
+        ])
+        # If there are no options, then submitted_word does not validate
+        if len(options[-1]) == 0:
+            print(options)
+            return False
+    
+    print(options)
+    return True
+
+print(validate(&quot;ACE&quot;, list_of_tuples))
+print()
+print(validate(&quot;ACED&quot;, list_of_tuples))
+print()
+print(validate(&quot;ACFFFED&quot;, list_of_tuples))
+</code></pre>
+<p>Console output:</p>
+<pre><code>[[('A', 'R'), ('A', 'G')], [('C', 'G')], [('E', 'B')]]
+True
+
+[[('A', 'R'), ('A', 'G')], [('C', 'G')], [('E', 'B')], [('D', 'G')]]        
+True
+
+[[('A', 'R'), ('A', 'G')], [('C', 'G')], [('F', 'R')], []]
+False
+</code></pre>
+
+
+Title: Find all combinations of letters, selecting each letter from a different key in a dictionary
+Tags: <python><algorithm><dictionary><iteration><permutation>
+Body: <p>Let's say we have this data structure:</p>
+
+<pre><code>class Lock:
+def __init__(self):
+    self.data1 = ['a', 'd', 'e', 'l', 's']
+    self.data2 = ['s', 'i', 'r', 't', 'n']
+    self.data3 = ['b', 'o', 'e', 'm', 'k']
+    self.data4 = ['f', 'y', 'u', 'n', 'g']
+</code></pre>
+
+<p>Alternatively, </p>
+
+<pre><code>d = {'1': ['a', 'd', 'e', 'l', 's'], '2': ['s', 'i', 'r', 't', 'n'], '3': ['b', 'o', 'e', 'm', 'k'], '4': ['f', 'y', 'u', 'n', 'g'] }
+</code></pre>
+
+<p>I want to find every possible combination of letters, given that each letter is selected from a different key or array. Order matters, so that the first letter always has to be from 'data1', second has to be from 'data2', etc.  </p>
+
+<p>The purpose is to then check these against a dictionary to see which ones are english-valid words.  I assumed getting a list of all the combinations, and then doing the check would be the fastest, but if that's not the case, I'd like some input. </p>
+
+
+Answer: <p>Use <a href="http://docs.python.org/2/library/itertools.html#itertools.product" rel="nofollow"><code>itertools.product()</code></a>:</p>
+
+<pre><code>for combo in itertools.product(self.data1, self.data2, self.data3, self.data4):
+    # combo is a tuple of 4 characters.
+</code></pre>
+
+<p>or:</p>
+
+<pre><code>for combo in itertools.product(*[d[k] for k in sorted(d.keys())]):
+    # combo is a tuple of 4 characters.
+</code></pre>
+
+<p>Demo:</p>
+
+<pre><code>&gt;&gt;&gt; import itertools                                                                                                                &gt;&gt;&gt; d = {'1': ['a', 'd', 'e', 'l', 's'], '2': ['s', 'i', 'r', 't', 'n'], '3': ['b', 'o', 'e', 'm', 'k'], '4': ['f', 'y', 'u', 'n', 'g'] }
+&gt;&gt;&gt; for combo in itertools.product(*[d[k] for k in sorted(d.keys())]):
+...     print ''.join(combo)
+... 
+asbf
+asby
+asbu
+asbn
+asbg
+asof
+asoy
+asou
+ason
+asog
+asef
+
+...
+
+snkf
+snky
+snku
+snkn
+snkg
+</code></pre>
+
+
+Title: Given a list of words, identify all identical substrings of length 4 or greater
+Tags: <python><algorithm><counter><frequency>
+Body: <p>Let's say I have a list of foreign words:</p>
+
+<ol>
+<li>ilikuwa</li>
+<li>alikuwa</li>
+<li>nilifundisha</li>
+<li>anafundisha</li>
+<li>tunasoma</li>
+<li>tulisoma</li>
+</ol>
+
+<p>I want to identify within this list of words, substrings of length 4 or greater that are common in the words.  For example, the word "kuwa", "fundisha", and "soma" would all fall under this category.  </p>
+
+<p>Then, when I do frequency analysis re:</p>
+
+<pre><code>cnt = Counter()
+for lines in list:
+    cnt[words]
+print cnt.most_common(2000)
+</code></pre>
+
+<p>I want those substrings to be counted the number of times they appear in the overall list...such that the final output for: print cnt.most_common(3) would be something like.</p>
+
+<ol>
+<li>kuwa - 2</li>
+<li>fundisha - 2</li>
+<li>soma- 2</li>
+<li>ilikuwa- 1
+...etc</li>
+</ol>
+
+<p>I'm at a complete loss for how to go about doing this, though.  Any ideas?</p>
+
+
+Answer: <p>You're already using a <code>Counter</code>, so all that's missing is a way to generate the substrings of any given string. If that bit is in a function somewhere that takes a string and the minimum length of a substring, your counting logic can be a one-liner with help from <code>itertools.chain</code>:</p>
+
+<pre><code>cnt = Counter(chain.from_iterable(substrings(line, 4) for line in lines))
+cnt.most_common(2000)
+</code></pre>
+
+<p>Which leaves the problem of working out how to generate those substrings. The easiest way to do this is to loop over the possible sizes of substrings, and then loop over the string and give back the slice starting at each successive position in the string, and having the given length (but since slices in Python take a start and an end index, we need to do some slice arithmetic to make that work):</p>
+
+<pre><code>def substrings(s, min_length=1):
+   for length in range(min_length, len(s)+1):
+     for start in range(len(s) - min_length + 1):
+        yield s[start:start+length]
+</code></pre>
+
+
+Title: Find words and combinations of words that can be spoken the quickest
+Tags: <python><algorithm><cpu-word><nlp><linguistics>
+Body: <p>I'm a big fan of discovering sentences that can be rapped very quickly.  For example, "gotta read a little bit of Wikipedia" or "don't wanna wind up in the gutter with a bottle of malt." (George Watsky) </p>
+
+<p>I wanted to write a program in Python that would enable me to find words (or combinations of words) that can be articulated such that it sounds very fast when spoken.  </p>
+
+<p>I initially thought that words that had a high syllable to letter ratio would be the best, but upon writing a Python program to do find those words, I retrieved only very simple words that didn't really sound fast (e.g. "iowa").  </p>
+
+<p>So I'm at a loss at what actually makes words sound fast.  Is it the morpheme to letter ratio?  Is it the number of alternating vowel-consonant pairs?  </p>
+
+<p>How would you guys go about devising a python program to resolve this problem?</p>
+
+
+Answer: <p>This is just a stab in the dark as I'm not a linguist (although, I have written a voice synthesizer), the metric that be useful here is the number of <a href="http://en.wikipedia.org/wiki/Phoneme" rel="noreferrer">phonemes</a> that make up each word, since the phonemes themselves are going to be the same approximate duration regardless of use. There's an <a href="http://en.wikipedia.org/wiki/International_Phonetic_Alphabet_chart_for_English_dialects" rel="noreferrer">International Phonetic Alphabet chart for english dialects</a>, as well as a nice <a href="http://en.wikipedia.org/wiki/English_phonology" rel="noreferrer">phonology of English</a>.</p>
+
+<p>A good open-source phonetic dictionary is available from the <a href="https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict/" rel="noreferrer">cmudict</a> project which has about <a href="https://cmusphinx.svn.sourceforge.net/svnroot/cmusphinx/trunk/cmudict/cmudict.0.7a" rel="noreferrer">130k words</a></p>
+
+<p>Here's a really quick stab at a look up program:</p>
+
+<pre><code>#!/usr/bin/python
+
+import re
+
+words={}
+
+for line in open("cmudict.0.7a",'ro').readlines():
+    split_idx = line.find(' ')
+    words[line[0:split_idx]] = line[split_idx+1:-1]
+
+user_input = raw_input("Words: ")
+
+print
+for word in user_input.split(' '):
+    try:
+        print "%25s %s" % (word, words[word.upper()])
+    except:
+        print "%25s %s" % (word, 'unable to find phonems for word')
+</code></pre>
+
+<p>When run..</p>
+
+<pre><code>Words: I support hip hop from the underground up
+
+                    I  AY1
+              support  S AH0 P AO1 R T
+                  hip  HH IH1 P
+                  hop  HH AA1 P
+                 from  F R AH1 M
+                  the  DH AH0
+          underground  AH1 N D ER0 G R AW2 N D
+                   up  AH1 P
+</code></pre>
+
+<p>If you want to get super fancy pants about this, there's always the <a href="http://www.nltk.org/" rel="noreferrer">Python Natural Language Toolkit</a> which may have some useful tidbits for you.</p>
+
+<p>Additionally, some <em>real world use</em>.. although to be fair, I fixed 'stylin' to 'styling'.. But left 'tellin' to reveal the deficiency of unknown words.. You could probably try a lookup for words ending with <code>in'</code> by subbing the g in for the apostrophe and then drop the <code>NG</code> phoneme from the lookup.. </p>
+
+<pre><code>                  Yes  Y EH1 S
+                  the  DH AH0
+               rhythm  R IH1 DH AH0 M
+                  the  DH AH0
+                rebel  R EH1 B AH0 L
+              Without  W IH0 TH AW1 T
+                    a  AH0
+                pause  P AO1 Z
+                  I'm  AY1 M
+             lowering  L OW1 ER0 IH0 NG
+                   my  M AY1
+                level  L EH1 V AH0 L
+                  The  DH AH0
+                 hard  HH AA1 R D
+               rhymer  R AY1 M ER0
+                where  W EH1 R
+                  you  Y UW1
+                never  N EH1 V ER0
+                 been  B IH1 N
+                  I'm  AY1 M
+                   in  IH0 N
+                  You  Y UW1
+                 want  W AA1 N T
+              styling  S T AY1 L IH0 NG
+                  you  Y UW1
+                 know  N OW1
+                 it's  IH1 T S
+                 time  T AY1 M
+                again  AH0 G EH1 N
+                    D  D IY1
+                  the  DH AH0
+                enemy  EH1 N AH0 M IY0
+               tellin unable to find phonems for word
+                  you  Y UW1
+                   to  T UW1
+                 hear  HH IY1 R
+                   it  IH1 T
+                 They  DH EY1
+              praised  P R EY1 Z D
+              etc...
+</code></pre>
+
+<p>If this is something you plan on putting some time into, I'd be interested in helping. I think putting 'Worlds first rapping IDE' on my resume would be hilarious. And if one exists already, world's first Python based rapping IDE.  :p</p>
+
+

@@ -1,0 +1,805 @@
+Title: How to properly implement Minimax AI for Tic Tac Toe?
+Tags: <python><algorithm><tic-tac-toe><minimax>
+Body: <p>I want to implement Minimax AI for Tic Tac Toe of orders 3, 4, 5.</p>
+<p>Rules of the game:</p>
+<ul>
+<li><p>For an order n Tic Tac Toe game, there is a board comprising of n rows and n columns, for a total of n<sup>2</sup> cells. The board is initially empty.</p>
+</li>
+<li><p>There are two players, players move alternatively, no player can abstain from moving or move in two consecutive turns. In each turn a player must choose a cell that hasn't been previously chosen.</p>
+</li>
+<li><p>Games ends when either player has occupied a complete row, column or diagonal of n cells, or all cells are occupied.</p>
+</li>
+</ul>
+<p>There are 3 states a cell can be in, so an naive upper bound of count of states can be calculated using 3<sup>n<sup>2</sup></sup>, disregarding the rules. For order 3 it is 19,683, for 4 43,046,721 and for 5 it is 847,288,609,443.</p>
+<p>I have programmatically enumerated all legal states for orders 3 and 4. For order 3, there are 5,478 states reachable if &quot;O&quot; moves first, and 5,478 if &quot;X&quot; moves first, rotations and reflections are counted as distinct boards, for a total of 8,533 unique states reachable. For order 4, 972,2011 states are reachable if either player moves first, for a total of 14,782,023 states.</p>
+<p>I don't have the exact number of states for order 5, but based on the fact players move alternatively and ignoring the game over condition, there are 161,995,031,226 states reachable if the game doesn't end when there is a winner. So the number of legal states is less than that, I estimate the error of my calculation is within 10%.</p>
+<p>I have previously implemented a working <a href="https://stackoverflow.com/questions/77417037/why-does-utilizing-a-simple-strategy-of-tic-tac-toe-lower-the-ais-win-rate">reinforcement learning AI</a> for Tic Tac Toe order 3, but wasn't satisfied by its performance.</p>
+<p>So I have tried to implement Minimax AI for Tic Tac Toe, the only thing relevant I have found is <a href="https://www.geeksforgeeks.org/finding-optimal-move-in-tic-tac-toe-using-minimax-algorithm-in-game-theory" rel="nofollow noreferrer">this</a>, but the code quality is horrible and doesn't actually work.</p>
+<p>So I tried to implement my own version based on it.</p>
+<p>Because a player has either occupied a cell or not occupied a cell, this is binary, so for one player the state of the board can be represented by n<sup>2</sup> bits, as there are two players we need 2n<sup>2</sup> bits for the for information about the board.</p>
+<p>1 indicates the player has occupied a cell, 0 indicates a cell is not occupied by the player. Denote the integers that encode player information as <code>(o, x)</code>, <code>o</code> and <code>x</code> cannot has common set bits, to get the full information of the board, use <code>full = o | x</code>, so a set bit in <code>full</code> means the corresponding cell is occupied by either player, else the cell isn't occupied.</p>
+<p>I pack the board into one integer using <code>o &lt;&lt; n * n | x</code> to store the information as efficiently as possible, even with this even storing the information of the encoded states for order 4 takes more than 1GiB RAM. Storing the boards and corresponding legal moves for order 4 takes more than 7GiB RAM (I have 16GiB RAM). The board is unpacked by <code>o = full &gt;&gt; n * n; x = full &amp; (1 &lt;&lt; n * n) - 1</code>.</p>
+<p>Counting from left to right, and from top to bottom, cell located at row <code>r</code> column <code>c</code> corresponds to <code>full &amp; 1 &lt;&lt; ((n - r) * n - 1 - c)</code>. A move is set by bit-wise OR <code>|</code>.</p>
+<p>A fully occupied board has no unset bits, therefore <code>full.bit_count() == n * n</code>. A board has n rows and n columns and 2 diagonals, winner is determined by generating the bit masks for all 2n+2 lines and iterating through the masks to find if any <code>o &amp; mask == mask</code> or <code>x &amp; mask == mask</code>.</p>
+<p>And finally, when there is exactly one gap in a line and all other cells in the same line are occupied by one player, said player can win in the next move. So a rational player should always choose such a gap when it is their turn, to win the game if they occupied the other cells or to prevent the other player from winning. The AI should only consider such gaps when there are such gaps.</p>
+<p>Thus, the winning strategy would be to create at least two such gaps simultaneously, thus the opponent can only block one gap allowing the player to win in the next turn, this requires at least 2n - 3 cells to be occupied by the player, assuming the player moves first the other player would have taken 2n - 4 turns, the total number of turns so far would thus be 4n - 7. The next move would be the opponent's, so the AI should seek to win in 4n - 5 turns if it moves first, or 4n - 4 turns if it moves second.</p>
+<p>The following is the code I used to enumerate all Tic Tac Toe legal states for order 3 (and order 4, the code for order 4 is omitted for brevity, but it can be obtained by trivially changing some numbers):</p>
+<pre><code>from typing import List, Tuple
+
+
+def pack(line: range, last: int) -&gt; int:
+    return (sum(1 &lt;&lt; last - i for i in line), tuple(line))
+
+
+def generate_lines(n: int) -&gt; List[Tuple[int, Tuple[int]]]:
+    square = n * n
+    last = square - 1
+    lines = []
+    for i in range(n):
+        lines.extend(
+            (
+                pack(range(i * n, i * n + n), last),
+                pack(range(i, square, n), last),
+            )
+        )
+
+    lines.extend(
+        (
+            pack(range(0, square, n + 1), last),
+            pack(range((m := n - 1), n * m + 1, m), last),
+        )
+    )
+    return lines
+
+
+LINES_3 = generate_lines(3)
+
+FULL3 = (1 &lt;&lt; 9) - 1
+GAMESTATES_3_P1 = {}
+GAMESTATES_3_P2 = {}
+
+
+def check_state_3(o: int, x: int) -&gt; Tuple[bool, int]:
+    for line, _ in LINES_3:
+        if o &amp; line == line:
+            return True, 0
+        elif x &amp; line == line:
+            return True, 1
+
+    return (o | x).bit_count() == 9, 2
+
+
+def process_states_3(board: int, move: bool, states: dict, moves: List[int]) -&gt; None:
+    if board not in states:
+        o = board &gt;&gt; 9
+        x = board &amp; FULL3
+        if not check_state_3(o, x)[0]:
+            left = 8 + 9 * move
+            for i, n in enumerate(moves):
+                process_states_3(
+                    board | 1 &lt;&lt; left - n, not move, states, moves[:i] + moves[i + 1 :]
+                )
+
+        c = len(moves)
+        states[board] = {i: 1 &lt;&lt; c for i in moves}
+
+
+process_states_3(0, 1, GAMESTATES_3_P1, list(range(9)))
+process_states_3(0, 0, GAMESTATES_3_P2, list(range(9)))
+</code></pre>
+<p>The following is my reimplementation of the code found in the linked article.</p>
+<pre><code>MINIMAX_STATES_3_P1 = {}
+SCORES_3 = (10, -10, 0)
+
+def minimax_search_3(board: int, states: dict, maximize: bool, moves: List[int]) -&gt; int:
+    if score := states.get(board):
+        return score
+
+    o = board &gt;&gt; 9
+    x = board &amp; FULL3
+    over, winner = check_state_3(o, x)
+    if over:
+        score = SCORES_3[winner]
+        states[board] = score
+        return score
+
+    left = 8 + 9 * maximize
+    best, extreme, maximize = (-1e309, max, False) if maximize else (1e309, min, True)
+    for i, n in enumerate(moves):
+        best = extreme(
+            best,
+            minimax_search_3(
+                board | 1 &lt;&lt; left - n, states, maximize, moves[:i] + moves[i + 1 :]
+            ),
+        )
+
+    states[board] = best
+    return best
+
+
+minimax_search_3(0, MINIMAX_STATES_3_P1, 1, list(range(9)))
+</code></pre>
+<p>It doesn't work at all, all scores are either 10, 0 or -10, it doesn't take recursion depth into account. The function found in the article will even repeatedly evaluate the same states over and over again, because the states can be reached in different ways, and the function does redundant calculations, I fixed that by caching.</p>
+<p>The AI should at minimum stop recursion when a given number of turns are reached, and wins that occur much later should have less weight, and the score of states should vary based on how many win states they lead. And as mentioned before, when there are gaps the AI should only consider such gaps.</p>
+<p>I have tried to fix the problems myself, I wrote the following Minimax-ish function, but I don't actually know Minimax theory and I don't know if it works:</p>
+<pre><code>def generate_gaps(lines: List[Tuple[int, Tuple[int]]], l: int):
+    k = l * l - 1
+    return [
+        (sum(1 &lt;&lt; k - n for n in line[:i] + line[i + 1 :]), 1 &lt;&lt; k - line[i], line[i])
+        for _, line in lines
+        for i in range(l)
+    ]
+
+
+GAPS_3 = generate_gaps(LINES_3, 3)
+
+
+def find_gaps_3(board: int, player: int) -&gt; int:
+    return [i for mask, pos, i in GAPS_3 if player &amp; mask == mask and not board &amp; pos]
+
+
+MINIMAX_3 = {}
+
+
+def my_minimax_search_3(
+    board: int, states: dict, maximize: bool, moves: List[int], turns: int, depth: int
+) -&gt; int:
+    if entry := states.get(board):
+        return entry[&quot;score&quot;]
+
+    o = board &gt;&gt; 9
+    x = board &amp; FULL3
+    over, winner = check_state_3(o, x)
+    if over:
+        score = SCORES_3[winner] * 1 &lt;&lt; depth
+        states[board] = {&quot;score&quot;: score}
+        return score
+
+    if (full := o | x).bit_count() &gt; turns:
+        return 0
+
+    depth -= 1
+    left, new = (17, False) if maximize else (8, True)
+    gaps = set(find_gaps_3(full, o) + find_gaps_3(full, x))
+    weights = {
+        n: my_minimax_search_3(
+            board | 1 &lt;&lt; left - n, states, new, moves[:i] + moves[i + 1 :], depth
+        )
+        for i, n in enumerate(moves)
+        if not gaps or n in gaps
+    }
+    score = [-1, 1][maximize] * sum(weights.values())
+    states[board] = {&quot;weights&quot;: weights, &quot;score&quot;: score}
+    return score
+
+
+my_minimax_search_3(0, MINIMAX_3, 1, list(range(9)), 9, 9)
+</code></pre>
+<p>How should I properly implement Minimax for Tic Tac Toe?</p>
+
+
+Title: Efficient way to implement Minimax AI for Tic Tac Toe orders 3, 4, 5?
+Tags: <python><algorithm><tic-tac-toe>
+Body: <p>I want to create an artificial intelligence that plays Tic Tac Toe better than any human.</p>
+<p>I have already written a completely working GUI Tic Tac Toe game with AI players, but all those AI players are bad. So I have created another AI using <a href="https://stackoverflow.com/questions/77417037/why-does-utilizing-a-simple-strategy-of-tic-tac-toe-lower-the-ais-win-rate">reinforcement learning</a>, it works and is guaranteed to not to lose more than 99% of the time, but it doesn't win as often.</p>
+<p>I want to do better, so I want to use Minimax algorithm to implement the AI. I have found an <a href="https://www.geeksforgeeks.org/finding-optimal-move-in-tic-tac-toe-using-minimax-algorithm-in-game-theory" rel="nofollow noreferrer">example</a> online, but the code quality is very poor. I am able to reimplement it more efficiently, but I don't know the most efficient way to implement it.</p>
+<p>I want the AI for 3x3, 4x4 and 5x5 Tic Tac Toe games. These games end when there is a line (row, column and diagonal) that is completely filled with the same player's pieces, or the whole board is filled.</p>
+<p>There are 3 possible states each cell can be in, on order n board there are n<sup>2</sup> cells, so for order n game of Tic Tac Toe there are a total of 3<sup>n<sup>2</sup></sup> possible states, regardless of validity, discounting reflections and rotations. For order 3 there are 19,683 possibilities which is quite small, for order 4 there are 43,046,721 possibilities, that is more than 43 million, a big number, but bruteforceable.
+For order 5 that is 847,288,609,443, more than 847 billion, it is a huge number and not bruteforceable.</p>
+<p>I have checked all possible order 3 Tic Tac Toe states, and systematically enumerated all possible order 3 Tic Tac Toe states if a given player moves first. There are 5478 states reachable if one player moves first, and a total of 8533 states reachable via normal gameplay.</p>
+<p>I want to know, what are more efficient ways to check whether a given state is legal, whether a state is a game over state, and whether a state can let one player win in one move.</p>
+<p>A state is legal if it can be reached via normal gameplay, a state is a game over state if there are no empty spots in some line and all pieces on the line are the same, and a state can let one player win in one move if there is exactly one empty spot and all other pieces are the same. When the game is one move away from ending I want the AI only consider such gaps.</p>
+<p>A state can be reached via normal gameplay if the absolute difference between the counts of pieces is less than or equal to 1, because players take turns alternatively, one player cannot move in two consecutive turns. It must also satisfy that there are no two winners, because the game ends when there is a winner. And It must also satisfy that the loser's moves are no greater than the winner's, because that would mean the loser made a move after there is a winner, which is illegal.</p>
+<p>I have solved the aforementioned problems for 3x3 Tic Tac Toe using loops and sets, implementing the logic I mentioned, but I don't think they are very efficient.</p>
+<p>(A board is represented by a flat iterable, empty spots are represented as <code>&quot; &quot;</code>, and players <code>&quot;O&quot;, &quot;X&quot;</code>, the cell with index <code>i</code> corresponds to <code>*divmod(i, 3)</code> on the square board)</p>
+<pre><code>LINES = (
+    (0, 3, 1),
+    (3, 6, 1),
+    (6, 9, 1),
+    (0, 7, 3),
+    (1, 8, 3),
+    (2, 9, 3),
+    (0, 9, 4),
+    (2, 7, 2),
+)
+
+
+def is_valid(board: str) -&gt; bool:
+    winners = set()
+    winner = None
+    for start, stop, step in LINES:
+        line = board[start:stop:step]
+        if len(set(line)) == 1 and (winner := line[0]) in {&quot;O&quot;, &quot;X&quot;}:
+            winners.add(winner)
+
+    return (
+        len(winners) &lt;= 1
+        and abs(board.count(&quot;O&quot;) - board.count(&quot;X&quot;)) &lt;= 1
+        and (not winner or board.count(winner) &gt;= board.count(&quot;OX&quot;.replace(winner, &quot;&quot;)))
+    )
+
+
+def is_playable(board: str) -&gt; bool:
+    for start, stop, step in LINES:
+        line = board[start:stop:step]
+        if len(set(line)) == 1 and line[0] in {&quot;O&quot;, &quot;X&quot;}:
+            return False
+
+    return &quot; &quot; in board and abs(board.count(&quot;O&quot;) - board.count(&quot;X&quot;)) &lt;= 1
+
+
+def check_state(board: str) -&gt; Tuple[bool, str]:
+    for start, stop, step in LINES:
+        line = board[start:stop:step]
+        if len(set(line)) == 1 and (winner := line[0]) in {&quot;O&quot;, &quot;X&quot;}:
+            return True, winner
+
+    return &quot; &quot; not in board, None
+
+
+def find_gaps(board: str, piece: str) -&gt; int:
+    gaps = []
+    for start, end, step in LINES:
+        line = board[start:end:step]
+        if line.count(piece) == 2 and &quot; &quot; in line:
+            gaps.append(start + line.index(&quot; &quot;) * step)
+
+    return gaps
+</code></pre>
+<p>What are more efficient ways to achieve the above tasks?</p>
+<hr />
+<h2>Update</h2>
+<p>I did some tests:</p>
+<pre><code>In [14]: board = &quot;OXOX     &quot;
+
+In [15]: %timeit board[0:3:1]
+109 ns ± 0.806 ns per loop (mean ± std. dev. of 7 runs, 10,000,000 loops each)
+
+In [16]: %timeit (board[0], board[1], board[2])
+124 ns ± 1.09 ns per loop (mean ± std. dev. of 7 runs, 10,000,000 loops each)
+
+In [17]: FILLED = {('X', 'X', 'X'), ('O', 'O', 'O')}
+
+In [18]: %timeit (board[0], board[1], board[2]) in FILLED
+162 ns ± 1.39 ns per loop (mean ± std. dev. of 7 runs, 10,000,000 loops each)
+
+In [19]: %timeit len(set(board[0:3:1])) == 1
+348 ns ± 10.6 ns per loop (mean ± std. dev. of 7 runs, 1,000,000 loops each)
+
+In [20]: %timeit tuple(board[0:3:1]) in FILLED
+301 ns ± 8.03 ns per loop (mean ± std. dev. of 7 runs, 1,000,000 loops each)
+
+In [21]: new_board = [1 if s == 'O' else (-1 if s == 'X' else 0) for s in board]
+
+In [22]: new_board
+Out[22]: [1, -1, 1, -1, 0, 0, 0, 0, 0]
+
+In [23]: %timeit sum(new_board[0:3:1])
+269 ns ± 9.68 ns per loop (mean ± std. dev. of 7 runs, 1,000,000 loops each)
+
+In [24]: %timeit tuple(board[i] for i in (0, 1, 2))
+699 ns ± 13 ns per loop (mean ± std. dev. of 7 runs, 1,000,000 loops each)
+
+In [25]: %timeit a, b, c = (0, 1, 2); (board[a], board[b], board[c])
+146 ns ± 1.69 ns per loop (mean ± std. dev. of 7 runs, 10,000,000 loops each)
+</code></pre>
+<p>The most efficient way I can find is to store the indices of cells of rows, columns and diagonals, loop through the collection of indices tuples, and unpack the tuple to use each element to retrieve the cell of the board and build a tuple for that line.</p>
+<p>Then whether a line is full can be checked by checking if the tuple is <code>('O',)*n</code> or <code>('X',)*n</code>. Whether there is a gap can be checked by membership checking, there are only n possibilities for a given player where there is a single line that is exactly filled with n-1 pieces of the player and the other spot is empty. So two collections, one for each player, can be used to find such gaps. Using a dictionary results in faster membership checking.</p>
+<p>This is the best I can do but I don't know if it is super efficient.</p>
+
+
+Title: How to combine overlapping ranges efficiently?
+Tags: <python><python-3.x><algorithm><performance>
+Body: <p>I have data from multiple csv files and I need to merge the tables into one table. The data in question is text dump of GeoLite2 database, and there are literally millions of rows, simply loading the data into lists takes 2927MiB.</p>
+<p>The tables contain information about IP networks, some tables contain information about ASN, some about city, and some others about country, these tables have different keys (IP networks), and they may contain common keys, I intend to merge these tables into one table containing information about ASN, country and city of all networks listed.</p>
+<p>The question is related to my previous <a href="https://stackoverflow.com/questions/76693414/how-to-optimize-splitting-overlapping-ranges">question</a>, but it is different.</p>
+<p>Imagine an infinite boxes arranged in a line, they are numbered using unique integers, and all are initially empty. This time, all boxes can hold infinitely many values, but they can only hold unique values. Meaning, if you put A into box 0, box 0 contains A, but after that, no matter how many times you put A into box 0, box 0 always contains exactly 1 instance of A. But if you put B into box 0, box 0 now contains A and B. But if you put B into the box again, box 0 still contains 1 instance of A and 1 instance of B.</p>
+<p>Now there are many triplets, the first two elements are integers, they correspond to start and end of an integer range (inclusive), each triplet describes a continuous integer range of boxes (meaning the number of every box is the number of the previous box plus one) with the same object.</p>
+<p>For example, <code>(0, 10, 'A')</code> means boxes 0 to 10 contain an instance of <code>'A'</code>.</p>
+<p>The task is to combine the information from the triplets and describe the state of the boxes in the least amount of triplets, in this case the third elements are <code>set</code>s.</p>
+<p>Input <code>(0, 10, 'A')</code> -&gt; Output <code>(0, 10, {'A'})</code>, explanation: boxes 0 to 10 contain an instance of <code>'A'</code>.</p>
+<p>Input <code>(0, 10, 'A'), (11, 20, 'A')</code> -&gt; Output <code>(0, 20, {'A'})</code>, explanation: boxes 0 to 10 contain an instance of <code>'A'</code>, and boxes 11 to 20 also contain an instance of <code>'A'</code>, 11 is 10 + 1, so boxes 0 to 20 contain an instance of <code>'A'</code>.</p>
+<p>Input <code>(0, 10, 'A'), (20, 30, 'A')</code> -&gt; Output <code>(0, 10, {'A'}), (20, 30, {'A'})</code>, explanation: boxes 0 to 10 contain an instance of <code>'A'</code>, and boxes 20 to 30 also contain an instance of <code>'A'</code>, all other boxes are empty, and 20 is not adjacent to 10, don't merge.</p>
+<p>Input <code>(0, 10, 'A'), (11, 20, 'B')</code> -&gt; Output <code>(0, 10, {'A'}), (11, 20, {'B'})</code></p>
+<p>Input <code>(0, 10, 'A'), (2, 8, 'B')</code> -&gt; Output <code>(0, 1, {'A'}), (2, 8, {'A', 'B'}), (9, 10, {'A'})</code>, explanation: boxes 0 to 10 have <code>'A'</code>, while boxes 2 to 8 have <code>'B'</code>, so boxes 2 to 8 have <code>{'A', 'B'}</code>.</p>
+<p>Input <code>(0, 10, 'A'), (5, 20, 'B')</code> -&gt; Output <code>(0, 4, {'A'}), (5, 10, {'A', 'B'}), (11, 20, {'B'})</code> explanation: same as above.</p>
+<p>Input <code>(0, 10, 'A'), (5, 10, 'A')</code> -&gt; Output <code>(0, 10, {'A'})</code>, explanation: boxes 0 to 10 have <code>'A'</code>, the second triplet adds no new information and is garbage, discard it.</p>
+<p>My current code that produces correct output for some test cases but raises <code>KeyError</code> for others:</p>
+<pre><code>import random
+from collections import defaultdict
+from typing import Any, List, Tuple
+
+def get_nodes(ranges: List[Tuple[int, int, Any]]) -&gt; List[Tuple[int, int, Any]]:
+    nodes = []
+    for ini, fin, data in ranges:
+        nodes.extend([(ini, False, data), (fin, True, data)])
+    return sorted(nodes)
+
+
+def combine_gen(ranges):
+    nodes = get_nodes(ranges)
+    stack = set()
+    actions = []
+    for node, end, data in nodes:
+        if not end:
+            if (action := (data not in stack)):
+                if stack and start &lt; node:
+                    yield start, node - 1, stack.copy()
+                stack.add(data)
+                start = node
+            actions.append(action)
+        elif actions.pop(-1):
+            if start &lt;= node:
+                yield start, node, stack.copy()
+                start = node + 1
+            stack.remove(data)
+
+
+def merge(segments):
+    start, end, data = next(segments)
+    for start2, end2, data2 in segments:
+        if end + 1 == start2 and data == data2:
+            end = end2
+        else:
+            yield start, end, data
+            start, end, data = start2, end2, data2
+    yield start, end, data
+
+
+def combine(ranges):
+    return list(merge(combine_gen(ranges)))
+</code></pre>
+<p>It produces correct output for the following test cases:</p>
+<pre><code>sample1 = [(0, 20, 'A'), (10, 40, 'B'), (32, 50, 'C'), (40, 50, 'D'), (45, 50, 'E'), (70, 80, 'F'), (90, 100, 'G'), (95, 120, 'H'), (131, 140, 'I'), (140, 150, 'J')]
+sample2 = [(0, 10, 'A'), (0, 1, 'B'), (2, 5, 'C'), (3, 4, 'C'), (6, 7, 'C'), (8, 8, 'D'), (110, 150, 'E'), (250, 300, 'C'), (256, 270, 'D'), (295, 300, 'E'), (500, 600, 'F')]
+sample3 = [(0, 100, 'A'), (10, 25, 'B'), (15, 25, 'C'), (20, 25, 'D'), (30, 50, 'E'), (40, 50, 'F'), (60, 80, 'G'), (150, 180, 'H')]
+sample4 = [(0, 16, 'red'), (0, 4, 'green'), (2, 9, 'blue'), (2, 7, 'cyan'), (4, 9, 'purple'), (6, 8, 'magenta'), (9, 14, 'yellow'), (11, 13, 'orange'), (18, 21, 'green'), (22, 25, 'green')]
+</code></pre>
+<p>I won't include the expected output for them here, run my code and you will find out what the outputs are, the outputs are correct.</p>
+<p>I have written a function to make test cases and a guaranteed correct but inefficient solution, and my efficient code raises <code>KeyError</code> when fed machine generated inputs.</p>
+<pre><code>def make_generic_case(num, lim, dat):
+    ranges = []
+
+    for _ in range(num):
+        start = random.randrange(lim)
+        end = random.randrange(lim)
+        if start &gt; end:
+            start, end = end, start
+        ranges.append([start, end, random.randrange(dat)])
+
+    ranges.sort(key=lambda x: (x[0], -x[1]))
+    return ranges
+
+
+def bruteforce_combine(ranges):
+    boxes = defaultdict(set)
+    for start, end, data in ranges:
+        for n in range(start, end + 1):
+            boxes[n].add(data)
+    
+    boxes = sorted(boxes.items())
+    output = []
+    lo, cur = boxes.pop(0)
+    hi = lo
+
+    for n, data in boxes:
+        if cur == data and n - hi == 1:
+            hi = n
+        else:
+            output.append((lo, hi, cur))
+            lo = hi = n
+            cur = data
+
+    output.append((lo, hi, cur))
+    return output
+</code></pre>
+<p>Because my code <em><strong>isn't working properly I CAN'T post it on Code Review</strong></em>, because Code Review only reviews working code and mine isn't.</p>
+<p><em><strong>Answers are required to use <code>make_generic_case(512, 4096, 16)</code> to get test cases and verify proposed solution's correctness against the output of <code>bruteforce_combine</code></strong></em>, <code>bruteforce_combine</code> is by definition correct (my logic is <code>defaultdict(set)</code>).</p>
+<p>What is a more efficient way to combine the overlapping ranges?</p>
+<hr />
+<p>Both existing answers are not ideal, the first gives the correct result but is very inefficient and will never finish processing my millions of rows:</p>
+<pre><code>In [5]: for _ in range(256):
+   ...:     case = make_generic_case(512, 4096, 16)
+   ...:     assert bruteforce_combine(case) == combine(case)
+
+In [6]: case = make_generic_case(512, 4096, 16)
+
+In [7]: %timeit combine(case)
+9.3 ms ± 35 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+</code></pre>
+<p>The second is much more efficient, but I haven't tested thoroughly yet.</p>
+<hr />
+<p>I have confirmed the correctness of the code from the second answer, and I have rewritten it to the following:</p>
+<pre><code>from collections import Counter
+
+def get_nodes(ranges):
+    nodes = []
+    for start, end, label in ranges:
+        nodes.extend(((start, 0, label), (end + 1, 1, label)))
+
+    return sorted(nodes)
+
+
+def combine(ranges):
+    if not ranges:
+        return []
+    nodes = get_nodes(ranges)
+    labels = set()
+    state = Counter()
+    result = []
+    start = nodes[0][0]
+    for node, is_end, label in nodes:
+        state[label] += [1, -1][is_end]
+        count = state[label]
+        if (is_end, count) in {(0, 1), (1, 0)}:
+            if start &lt; node:
+                if not count or labels:
+                    result.append((start, node - 1, labels.copy()))
+
+                start = node
+
+            (labels.remove, labels.add)[count](label)
+
+    return result
+</code></pre>
+<p>And it is still very inefficient, I need to process literally millions of rows:</p>
+<pre><code>In [2]: for _ in range(128):
+   ...:     case = make_generic_case(256, 4096, 16)
+   ...:     assert bruteforce_combine(case) == combine(case)
+
+In [3]: for _ in range(2048):
+   ...:     case = make_generic_case(512, 2048, 16)
+   ...:     assert bruteforce_combine(case) == combine(case)
+
+In [4]: case = make_generic_case(2048, 2**64, 32)
+
+In [5]: %timeit combine(case)
+4.19 ms ± 112 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+
+In [6]: case = make_generic_case(32768, 2**64, 32)
+
+In [7]: %timeit combine(case)
+116 ms ± 1.11 ms per loop (mean ± std. dev. of 7 runs, 10 loops each)
+
+In [8]: case = make_generic_case(1048576, 2**64, 32)
+
+In [9]: %timeit combine(case)
+5.12 s ± 30.3 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+</code></pre>
+<p>I have data from 6 gigantic CSV files, the total number of rows is:</p>
+<pre><code>In [74]: 495209+129884+3748518+1277097+429639+278661
+Out[74]: 6359008
+</code></pre>
+<p>That is well over 6 million, merely loading the data into RAM takes 2.9GiB, and I have only 16GiB RAM. I need a solution that is much more efficient, both in time complexity and space complexity.</p>
+
+
+Title: How to optimize printing Pascal's Triangle in Python?
+Tags: <python><python-3.x><algorithm><optimization><pascals-triangle>
+Body: <p>I have implemented the <a href="https://en.wikipedia.org/wiki/Pascal%27s_triangle" rel="nofollow noreferrer">Pascal's triangle</a> in Python, it is pretty efficient, but it isn't efficient enough and there are a few things I don't like.</p>
+<p>The Pascal's triangle is like the following:</p>
+<p><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/23050fcb53d6083d9e42043bebf2863fa9746043" alt="" /></p>
+<p>I have read <a href="https://www.geeksforgeeks.org/python-program-to-print-pascals-triangle/" rel="nofollow noreferrer">this useless tutorial</a> and <a href="https://stackoverflow.com/questions/24093387/pascals-triangle-for-python">this question</a>, and the solutions are extremely inefficient, involving factorials and don't use caching.</p>
+<p>Instead, I implemented a different algorithm I created myself. My mathematics isn't that good, but I have spotted the following simple recursive relationships:</p>
+<p>The triangle starts with a row with only 1 number in it, and that number is 1.</p>
+<p>For each subsequent row, the length of the row increment by 1, and the first and last number of the row is 1.</p>
+<p>Each number that isn't the first or last, is the sum of the number at the row above it with index equal to the number's index minus 1, and the number at row above it with the same index.</p>
+<p>And the rows of the triangle are symmetric.</p>
+<p>In other words, if we use zero-based indexing:</p>
+<pre class="lang-none prettyprint-override"><code>p(r, 0) = p(r, r) = 1
+p(r, c) = p(r - 1, c - 1) + p(r - 1, c)
+p(r, c) = p(r, r - c)
+</code></pre>
+<p>Below is my code:</p>
+<pre class="lang-py prettyprint-override"><code>from typing import List
+
+class Pascal_Triangle:
+    def __init__(self, rows: int = 0, fill: bool = True):
+        self.data = []
+        self.length = 0
+        if rows:
+            self.fill_rows(rows)
+        if fill:
+            self.fill_values()
+
+    def add_row(self, length: int):
+        row = [0] * length
+        row[0] = row[-1] = 1
+        self.data.append(row)
+
+    def fill_rows(self, rows: int):
+        for length in range(self.length + 1, rows + 1):
+            self.add_row(length)
+        self.length = rows
+
+    def comb(self, a: int, b: int) -&gt; int:
+        if not 0 &lt;= b &lt;= a:
+            raise ValueError(f'cannot choose {b} elements from a population of {a}')
+
+        if self.length &lt; (length := a + 1):
+            self.fill_rows(length)
+
+        return self.at(a, b)
+
+    def at(self, row: int, col: int) -&gt; int:
+        if val := self.data[row][row - col]:
+            self.data[row][col] = val
+            return val
+
+        if val := self.data[row][col]:
+            return val
+
+        self.data[row][col] = val = self.at(row - 1, col - 1) + self.at(row - 1, col)
+        return val
+
+    def fill_values(self):
+        for row in range(2, self.length):
+            for col in range(1, row):
+                self.at(row, col)
+
+    def get_row(self, row: int) -&gt; List[int]:
+        if self.length &lt; (length := row + 1):
+            self.fill_rows(length)
+
+        self.fill_values()
+        return self.data[row]
+
+    def pretty_print(self):
+        print('\n'.join(f&quot;{' ' * (self.length - i)}{' '.join(map(str, row))}&quot; for i, row in enumerate(self.data)))
+</code></pre>
+<p>First, the output of <code>tri = Pascal_Triangle(12); tri.pretty_print()</code> is extremely ugly:</p>
+<pre class="lang-none prettyprint-override"><code>            1
+           1 1
+          1 2 1
+         1 3 3 1
+        1 4 6 4 1
+       1 5 10 10 5 1
+      1 6 15 20 15 6 1
+     1 7 21 35 35 21 7 1
+    1 8 28 56 70 56 28 8 1
+   1 9 36 84 126 126 84 36 9 1
+  1 10 45 120 210 252 210 120 45 10 1
+ 1 11 55 165 330 462 462 330 165 55 11 1
+</code></pre>
+<p>How can I dynamically adjust the spacing between the elements so that the output looks more like an equilateral triangle?</p>
+<p>Second I don't like the recursive function, is there any way that I can get rid of the recursive function and calculate the values using the recursive relationship by iteration, while remembering already computed numbers?</p>
+<p>Third, is there a data structure more efficient than my nested lists for the same data? I have thought of <code>numpy.array</code> but arrays need each row to have the same length and arrays can't grow.</p>
+<p>Finally can my algorithm be optimized further?</p>
+<hr />
+<p>The data after calling <code>tri.at(16, 5)</code> is:</p>
+<pre class="lang-none prettyprint-override"><code>[[1],
+ [1, 1],
+ [1, 2, 1],
+ [1, 3, 3, 1],
+ [1, 4, 6, 4, 1],
+ [1, 5, 10, 10, 5, 1],
+ [1, 6, 15, 20, 15, 6, 1],
+ [1, 7, 21, 35, 35, 21, 0, 1],
+ [1, 8, 28, 56, 70, 56, 0, 0, 1],
+ [1, 9, 36, 84, 126, 126, 0, 0, 0, 1],
+ [1, 10, 45, 120, 210, 252, 0, 0, 0, 0, 1],
+ [1, 11, 55, 165, 330, 462, 0, 0, 0, 0, 0, 1],
+ [1, 12, 66, 220, 495, 792, 0, 0, 0, 0, 0, 0, 1],
+ [1, 0, 78, 286, 715, 1287, 0, 0, 0, 0, 0, 0, 0, 1],
+ [1, 0, 0, 364, 1001, 2002, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+ [1, 0, 0, 0, 1365, 3003, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+ [1, 0, 0, 0, 0, 4368, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]]
+</code></pre>
+<hr />
+<p>I know I am already doing <a href="https://en.wikipedia.org/wiki/Memoization" rel="nofollow noreferrer">memoization</a>, and that is not what I meant. I want to calculate the unfilled values without ever using a recursive function. Instead of using the recursive definition and going backwards, we can somehow use iteration, start from where the lowest value that was filled and needed for the query, and iterate through all needed numbers, make two copies of each number and go forwards, until the requested index was reached.</p>
+<p>The needed numbers can be computed using indexing and mathematics.</p>
+<p>In this way there is no recursive function call at all.</p>
+<hr />
+<h2><em><strong>Update</strong></em></h2>
+<p>I have rewrote my code to the following:</p>
+<pre><code>class Pascal_Triangle:
+    def __init__(self, end_row: int = 2, opt: int = 0):
+        self.data = [[1], [1, 1]]
+        self.length = 2
+        self.opt = [self.add_rows_o0, self.add_rows_o1]
+        if end_row &gt; 2:
+            self.opt[opt](end_row)
+
+    def add_rows_o0(self, end_row: int):
+        last_row = self.data[-1]
+        for _ in range(self.length, end_row):
+            self.data.append(
+                last_row := [1] + [a + b for a, b in zip(last_row, last_row[1:])] + [1]
+            )
+
+        self.length = end_row
+
+    def add_rows_o1(self, end_row: int):
+        last_row = self.data[-1]
+        for n in range(self.length, end_row):
+            mid = n // 2 + 1
+            row = [0] * (n - 1)
+            m = n - 2
+            for i, (a, b) in enumerate(zip(last_row, last_row[1:mid])):
+                row[i] = row[m - i] = a + b
+
+            self.data.append(last_row := [1] + row + [1])
+        self.length = end_row
+
+    def pretty_print(self):
+        longest = len(str(self.data[-1][self.length // 2]))
+        line_length = (longest + 1) * self.length
+        for row in self.data:
+            print(&quot; &quot;.join(f&quot;{n:{longest}}&quot; for n in row).center(line_length))
+</code></pre>
+<p>I have used <a href="https://en.wikipedia.org/wiki/List_comprehension#Python" rel="nofollow noreferrer">list comprehension</a> to generate new rows and got rid of the expensive recursive function call. The code is much faster as a result.</p>
+<p>However, I tried to exploit the symmetric nature of the rows and only calculate half of the row and mirror it to get the other half. In this way the number of calculations would be halved.</p>
+<p>But it is actually slower:</p>
+<pre class="lang-none prettyprint-override"><code>In [257]: %timeit Pascal_Triangle(64, 1)
+237 µs ± 7.43 µs per loop (mean ± std. dev. of 7 runs, 1,000 loops each)
+
+In [258]: %timeit Pascal_Triangle(64, 0)
+224 µs ± 9.75 µs per loop (mean ± std. dev. of 7 runs, 1,000 loops each)
+
+In [259]: Pascal_Triangle(64, 1).data == Pascal_Triangle(64, 0).data
+Out[259]: True
+</code></pre>
+<p>Why is it slower? And how can I actually skip the unnecessary calculations and make it faster?</p>
+
+
+Title: How to accelerate the convergence of Leibniz Series?
+Tags: <python><python-3.x><algorithm><performance><pi>
+Body: <p>The <a href="https://en.wikipedia.org/wiki/Leibniz_formula_for_%CF%80" rel="nofollow noreferrer">Leibniz series</a> is the following infinite series that is used to approximate π. It does indeed converge to π but it does so in a notoriously slow way.</p>
+<p><img src="https://wikimedia.org/api/rest_v1/media/math/render/svg/b702b40ec6c3f81e02a697312d2939a1068b467d" alt="" /></p>
+<p>A few years ago I wrote many Python functions to calculate π, and of course I wrote a function using it (because it is in many online tutorials), but finding it inefficient, I wrote much more efficient functions that approximate π much faster, the fastest I have tested was <a href="https://en.wikipedia.org/wiki/Ramanujan%E2%80%93Sato_series" rel="nofollow noreferrer">Ramanujan's π formula</a>, it gives 15 correct decimal places in 3 iterations (at this point double underflows).</p>
+<p>A while back I watched this <a href="https://www.youtube.com/watch?v=ypxKzWi-Bwg" rel="nofollow noreferrer">video</a> about accelerating Leibniz Series by using correction terms, and I was intrigued, so I wrote some Python functions for the correction terms to check the video's veracity, I found that using 1 correction term the series yields 10 correct decimal places for 2048 iterations, 2 correction terms yields 15 correct decimal places for 638 iterations, 3 correction terms yields 15 correct decimal places in 131 iterations, but 4 correction terms makes the series converge slower, makes the underflow occur at 154th iteration.</p>
+<p>I read that Leibniz Series can be accelerated:</p>
+<blockquote>
+<p>However, the Leibniz formula can be used to calculate π to high precision (hundreds of digits or more) using various <a href="https://en.wikipedia.org/wiki/Convergence_acceleration" rel="nofollow noreferrer">convergence acceleration</a> techniques.</p>
+</blockquote>
+<p>So I wanted to implement the algorithms myself, as a self-imposed programming challenge, to improve my skills (if anyone's wondering, no this is not homework), but my math isn't that good, so I put off doing it, until very recently when I read <a href="https://www.codeproject.com/Articles/5353031/Summation-of-Series-with-Convergence-Acceleration" rel="nofollow noreferrer">this</a>.</p>
+<p>I tried to implement some algorithms but I found that while they need less terms for more precise result, the computation for the same number of terms is much more expensive, so that they end up taking longer time to execute. Below is my code, I want to know, what programming techniques and convergence acceleration methods (limited to ones found on the Leibniz series Wikipedia page) I can use, to speed up the calculation of π using the Leibniz Series, both making it use less number of terms, and take less time to execute?</p>
+<p>(Using compiled libraries is OK, but I don't want to cheat, by caching for example)</p>
+<pre class="lang-py prettyprint-override"><code>import math
+from itertools import cycle
+from math import factorial
+
+
+def Ramanujan(n):
+    def term(k): return factorial(4 * k) * (1103 + 26390 * k) / \
+        (factorial(k) ** 4 * 396 ** (4 * k))
+    s = sum(term(i) for i in range(n))
+    return 1 / (2 * 2 ** 0.5 * s / 9801)
+
+
+sign = [1, -1]
+
+
+def Leibniz_Series(n):
+    return [1/i*s for i, s in zip(range(1, 2*n+1, 2), cycle(sign))]
+
+
+def Leibniz_0(n):
+    return 4 * sum(Leibniz_Series(n))
+
+
+def Leibniz_1(n):
+    correction = 1 / n*sign[n % 2]
+    return Leibniz_0(n) + correction
+
+
+def Leibniz_2(n):
+    correction = 1 / (
+        n + 1 / (
+            4 * n
+        )
+    )*sign[n % 2]
+    return Leibniz_0(n) + correction
+
+
+def Leibniz_3(n):
+    correction = 1 / (
+        n + 1 / (
+            4 * n + 4 / n
+        )
+    )*sign[n % 2]
+    return Leibniz_0(n) + correction
+
+
+def Leibniz_4(n):
+    correction = 1 / (
+        n + 1 / (
+            4 * n + 4 / (
+                n + 9 / n
+            )
+        )
+    )*sign[n % 2]
+    return Leibniz_0(n) + correction
+
+
+def bincoeff(n, k):
+    r = 1
+    if (k &gt; n):
+        return 0
+    for d in range(1, k + 1):
+        r = r * n / d
+        n -= 1
+    return r
+
+
+def abs(n):
+    return n * (-1) ** (n &lt; 0)
+
+
+def Euler(arr):
+    out = []
+
+    for i in range(len(arr)):
+        delta = 0
+        for j in range(i + 1):
+            coeff = bincoeff(i, j)
+            delta += (-1) ** j * coeff * abs(arr[j])
+
+        out.append(0.5 ** (i + 1) * delta)
+    return out
+
+
+def Leibniz_Euler(n):
+    return 4 * sum(Euler(Leibniz_Series(n)))
+
+
+def Leibniz_Aitken(n):
+    series = Leibniz_Series(n)
+    s0, s1, s2 = (sum(series[:n-i]) for i in (2, 1, 0))
+    return 4 * (s2 * s0 - s1 * s1) / (s2 - 2*s1 + s0)
+
+
+def LCP(s1, s2):
+    i = 0
+    for a, b in zip(s1, s2):
+        if a != b:
+            break
+        i += 1
+    return i
+
+
+for func in (Ramanujan, Leibniz_Euler, Leibniz_Aitken, Leibniz_4, Leibniz_3, Leibniz_2, Leibniz_1, Leibniz_0):
+    i = 12
+    last = 0
+    while (pi := func(i)) != math.pi:
+        i += 1
+        if i == 2048:
+            if abs(pi - math.pi) &lt;= 1e-6:
+                print('the calculated result is close')
+            else:
+                print('the method is too slow')
+            break
+        if pi == last:
+            print('float underflow')
+            break
+        last = pi
+    print(
+        f'function: {func.__name__}, iterations: {i}, correctness: {LCP(str(pi), str(math.pi))}')
+</code></pre>
+<p>Performance:</p>
+<pre><code>function: Ramanujan, iterations: 12, correctness: 17
+float underflow
+function: Leibniz_Euler, iterations: 52, correctness: 16
+the calculated result is close
+function: Leibniz_Aitken, iterations: 2048, correctness: 11
+function: Leibniz_4, iterations: 154, correctness: 17
+function: Leibniz_3, iterations: 131, correctness: 17
+function: Leibniz_2, iterations: 638, correctness: 17
+the calculated result is close
+function: Leibniz_1, iterations: 2048, correctness: 12
+the method is too slow
+function: Leibniz_0, iterations: 2048, correctness: 4
+
+In [2]: %timeit Ramanujan(3)
+3.7 µs ± 229 ns per loop (mean ± std. dev. of 7 runs, 100,000 loops each)
+
+In [3]: %timeit Leibniz_3(131)
+17.4 µs ± 123 ns per loop (mean ± std. dev. of 7 runs, 100,000 loops each)
+
+In [4]: %timeit Leibniz_Aitken(2048)
+295 µs ± 10.8 µs per loop (mean ± std. dev. of 7 runs, 1,000 loops each)
+
+In [5]: %timeit Leibniz_Euler(52)
+3.81 ms ± 430 µs per loop (mean ± std. dev. of 7 runs, 100 loops each)
+</code></pre>
+
+

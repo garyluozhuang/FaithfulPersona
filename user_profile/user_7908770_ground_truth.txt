@@ -1,0 +1,395 @@
+Title: Smoothen edges of a non-binary image
+Tags: <python><algorithm><image-processing><python-imaging-library><edges>
+Body: <p>I'm making some photo-editing tools in <code>python</code> using <code>PIL</code> (<code>Python Imaging Library</code>), and I was trying to make a program which converts a photo to its 'painted' version.</p>
+
+<p>I've managed to make a program which converts a photo into its distinct colours, but the problem is that the algorithm I'm using is operating on every pixel, meaning that the resulting image has very jagged differences between colours.</p>
+
+<p>Ideally, I'd like to smoothen out these edges, but I don't know how!</p>
+
+<p>I've checked out <a href="https://pythontic.com/image-processing/pillow/edge-enhancement-filter" rel="nofollow noreferrer">this site</a> for some help, but the method there produces quite different results to what I need.</p>
+
+<p>My Starting Image:
+<a href="https://i.sstatic.net/ulcpU.jpg" rel="nofollow noreferrer"><img src="https://i.sstatic.net/ulcpU.jpg" alt="Starting Image"></a></p>
+
+<p>My Image with Distinct Colours:
+<a href="https://i.sstatic.net/S9i15.png" rel="nofollow noreferrer"><img src="https://i.sstatic.net/S9i15.png" alt="Image with Distinct Colours"></a></p>
+
+<p>I would like to smoothen the edges in the image above.</p>
+
+<p>Results of using the method which doesn't quite work:
+<a href="https://i.sstatic.net/SJqlU.png" rel="nofollow noreferrer"><img src="https://i.sstatic.net/SJqlU.png" alt="Results of using he method which doesn&#39;t quite work"></a></p>
+
+<p>As you can see, using the technique doesn't smoothen the edges into natural-looking curves; instead it creates jagged edges.</p>
+
+<p>I know I should provide sample output, but suprisingly, I haven't actually got it, so I'll describe it as best as I can. Simply put, I want to smoothen the edges between the different colours.</p>
+
+<p>I've seen something called a Gaussian blur, but I'm not quite sure as to how to apply it here as the answers I've seen always mention some sort of threshold, and are usually to do with binary images, so I don't think it can apply here.</p>
+
+
+Answer: <p>Edge enhancement does the opposite of edge smoothing, so this is certainly not the tool you should use.</p>
+
+<p>Unfortunately, there is little that you can do because edge smoothing will indeed smoothen the jaggies, but it will also destroy the true edges, resulting in a blurred image. Edge-preserving smoothing is also a dead-end.</p>
+
+<p>You should have a look at the methods to extract the "cartoon part" of an image. There is a lot of literature on this topic, though often pretty sophisticated.</p>
+
+
+Title: Problems with using a rough greyscale algorithm?
+Tags: <python><algorithm><python-imaging-library><image-conversion><image-comparison>
+Body: <p>So I'm designing a few programs for editing photos in <code>python</code> using <code>PIL</code> and one of them was converting an image to greyscale (I'm avoiding the use of any functions from <code>PIL</code>).</p>
+
+<p>The algorithm I've employed is simple: for each pixel (colour-depth is 24), I've calculated the average of the <code>R</code>, <code>G</code> and <code>B</code> values and set the RGB values to this average.</p>
+
+<p>My program was producing greyscale images which seemed accurate, but I was wondering if I'd employed the correct algorithm, and I came across <a href="https://stackoverflow.com/a/12201744/7908770">this answer</a> to a question, where it seems that the 'correct' algorithm is to calculate <code>0.299 R + 0.587 G + 0.114 B</code>.</p>
+
+<p>I decided to compare my program to this algorithm. I generated a greyscale image using my program and another one (using the same input) from <a href="https://pinetools.com/grayscale-image" rel="noreferrer">a website online</a> (the top Google result for <code>'image to grayscale'</code>.</p>
+
+<p>To my naked eye, it seemed that they were exactly the same, and if there was any variation, I couldn't see it. However, I decided to use <a href="https://online-image-comparison.com/" rel="noreferrer">this website</a> (top Google result for <code>'compare two images online'</code>) to compare my greyscale images. It turned out that deep in the pixels, they had slight variations, but none which were perceivable to the human eye at a first glance (differences can be spotted, but usually only when the images are laid upon each other or switched between within milliseconds).</p>
+
+<p><strong>My Questions (the first is the main question)</strong>: </p>
+
+<ol>
+<li><strong>Are there any disadvantages to using my 'rough' greyscale algorithm?</strong></li>
+<li><strong>Does anyone have any input images where my greyscale algorithm would produce a visibly different image to the one that would be 'correct' ?</strong></li>
+<li><strong>Are there any colours/RBG combinations for which my algorithm won't work as well?</strong></li>
+</ol>
+
+<p>My key piece of code (if needed):</p>
+
+<pre><code>def greyScale(pixelTuple):
+    return tuple([round(sum(pixelTuple) / 3)] * 3)
+</code></pre>
+
+<p>The 'correct' algorithm (which seems to heavily weight green):</p>
+
+<pre><code>def greyScale(pixelTuple):
+    return tuple([round(0.299 * pixelTuple[0] + 0.587 * pixelTuple[1] + 0.114 * pixelTuple[2])] * 3)
+</code></pre>
+
+<p>My input image:
+<a href="https://i.sstatic.net/7rtQk.jpg" rel="noreferrer"><img src="https://i.sstatic.net/7rtQk.jpg" alt="My input image"></a></p>
+
+<p>The greyscale image my algorithm produces:
+<a href="https://i.sstatic.net/FvYYq.jpg" rel="noreferrer"><img src="https://i.sstatic.net/FvYYq.jpg" alt="The greyscale image my algorithm produces"></a></p>
+
+<p>The greyscale image which is 'correct':
+<a href="https://i.sstatic.net/jECAG.png" rel="noreferrer"><img src="https://i.sstatic.net/jECAG.png" alt="The greyscale image which is &#39;correct&#39;"></a></p>
+
+<p>When the greyscale images are compared online (highlighted red are the differences, using a fuzz of 10%):
+<a href="https://i.sstatic.net/kgCMN.jpg" rel="noreferrer"><img src="https://i.sstatic.net/kgCMN.jpg" alt="When the greyscale images are compared online (highlighted red are the differences, using a fuzz of 10%)"></a></p>
+
+<p>Despite the variations in pixels highlighted above, the greyscale images above appear as nearly the exact same (at least, to me).</p>
+
+<p>Also, regarding my first question, if anyone's interested, <a href="http://www.tannerhelland.com/3643/grayscale-image-algorithm-vb6/" rel="noreferrer">this site</a> has done some analysis on different algorithms for conversions to greyscale and also has some custom algorithms.</p>
+
+<p><strong>EDIT</strong>:</p>
+
+<p>In response to @Szulat's answer, my algorithm <strong>actually</strong> produces this image instead (ignore the bad cropping, the original image had three circles but I only needed the first one):</p>
+
+<p><a href="https://i.sstatic.net/GIFDX.png" rel="noreferrer"><img src="https://i.sstatic.net/GIFDX.png" alt="This is what my algorithm **actually** produces"></a></p>
+
+<p>In case people are wondering what the reason for converting to greyscale is (as it seems that the algorithm depends on the purpose), I'm just making some simple photo editing tools in <code>python</code> so that I can have a mini-Photoshop and don't need to rely on the Internet to apply filters and effects.</p>
+
+<p><strong>Reason for Bounty</strong>: Different answers here are covering different things, which are all relevant and helpful. This makes it quite difficult to choose which answer to accept. I've started a bounty because I like a few answers listed here, but also because it'd be nice to have a single answer which covers everything I need for this question.</p>
+
+
+Answer: <p>The images look <em>pretty similar</em>, but your eye can tell the difference, specially if you put one in place of the other:</p>
+
+<p><a href="https://i.sstatic.net/zpgnQ.gif" rel="noreferrer"><img src="https://i.sstatic.net/zpgnQ.gif" alt="enter image description here"></a></p>
+
+<p>For example, you can note that the flowers in the background look brighter in the averaging conversion.</p>
+
+<p>It is not that there is anything intrinsically "bad" about averaging the three channels. The reason for that formula is that we do not perceive red, green and blue equally, so their contributions to the intensities in a grayscale image shouldn't be the same; since we perceive green more intensely, green pixels should look brighter on grayscale. However, <a href="https://stackoverflow.com/a/51818451/1782792">as commented by Mark</a> there is no unique perfect conversion to grayscale, since we see in color, and in any case everyone's vision is slightly different, so any formula will just try to make an approximation so pixel intensities feel "right" for most people.</p>
+
+
+Title: What's the Time Complexity of my Primality Test?
+Tags: <python><algorithm><time-complexity><primality-test>
+Body: <p>I have a basic understanding of how to calculate Time Complexities, but I'm not sure how to calculate it in this case due to the random nature of primes.</p>
+
+<p>A quick explanation --> Essentially, I'm keeping a running count of the remainders so that I know when the next prime is.</p>
+
+<p>My code:</p>
+
+<pre><code>import math
+
+n = int(input("Enter the number:\t"))
+
+primeList = []
+checkList = []
+
+number = 3
+isPrime = True
+while number &lt;= math.sqrt(n) and isPrime:
+
+    isChanged = False
+    for i, checkNum in enumerate(checkList):
+        if checkNum == 1:
+            isChanged = True
+            checkList[i] = primeList[i]
+        else:
+            checkList[i] = checkNum - 1
+
+    if not isChanged:
+
+        primeList.append(number)
+        checkList.append(number)
+
+        if n % number == 0:
+            isPrime = False
+
+    number += 2
+
+if isPrime:
+    print("Prime")
+else:
+    print("Not Prime")
+</code></pre>
+
+
+Answer: <p>Your algorithm seems to be <code>O(n/log(n))</code></p>
+
+<p>There are <code>sqrt(n)</code> passes through the outer loop. The inner loop is bounded by the number of primes which are less than <code>sqrt(n)</code>. By the <a href="https://en.wikipedia.org/wiki/Prime_number_theorem" rel="nofollow noreferrer">Prime Number Theorem</a> this is asymptotically given by <code>sqrt(n)/log(sqrt(n))</code>. By the laws of logarithms this is equivalent to <code>sqrt(n)/(0.5*log(n)) = 2*sqrt(n)/log(n)</code>. The overall complexity is thus</p>
+
+<pre><code>O(sqrt(n)*2*sqrt(n)/log(n)) = O(2*n/log(n)) = O(n/log(n))
+</code></pre>
+
+<p>Needless to say, this isn't a very efficient way to check if <code>n</code> is prime. It is asymptotically little better than the <code>O(n)</code> naive check for divisibility by all numbers less than <code>n</code>. </p>
+
+
+Title: How to get this list of combinations?
+Tags: <python><python-3.x><algorithm><combinations><permutation>
+Body: <p>I have two numbers, N and L (let's say 5 and 3).</p>
+
+<p>How can I generate every possible <code>list</code> where the sum of the list is equal to N (5) and the length of every <code>list</code> is L (3)?</p>
+
+<p>Example output (in this case):</p>
+
+<pre><code>[0, 0, 5]
+[0, 1, 4]
+[0, 2, 3]
+[0, 3, 2]
+...
+[0, 5, 0]
+...
+[1, 4, 0]
+...
+[5, 0, 0]
+</code></pre>
+
+<p>I've checked out <code>itertools</code> and its <code>combinations</code> and <code>permutations</code> functions, but they don't seem right for the task.</p>
+
+
+Answer: <p>You can create a recursive function to generate all possible permutations with the given conditions, and then filter to retain only the lists which sum to the desired value:</p>
+
+<pre><code>def list_results(a, b):
+   return [i for i in permutations(b) if sum(i) == a]
+
+def permutations(d, current = []):
+   if len(current) == d:
+     yield current
+   else:
+     for i in range(10):
+        yield from permutations(d, current+[i])
+
+print(list_results(5, 3))
+</code></pre>
+
+<p>Output:</p>
+
+<pre><code>[[0, 0, 5], [0, 1, 4], [0, 2, 3], [0, 3, 2], [0, 4, 1], [0, 5, 0], [1, 0, 4], [1, 1, 3], [1, 2, 2], [1, 3, 1], [1, 4, 0], [2, 0, 3], [2, 1, 2], [2, 2, 1], [2, 3, 0], [3, 0, 2], [3, 1, 1], [3, 2, 0], [4, 0, 1], [4, 1, 0], [5, 0, 0]]
+</code></pre>
+
+<p>Edit: a slightly faster would entail an additional check in the recursive function:</p>
+
+<pre><code>import time
+def timeit(f):
+   def wrapper(*args, **kwargs):
+      c = time.time()
+      results = list(f(*args, **kwargs))
+      print("Result from function '{}' achieved in {}".format(f.__name__, abs(c-time.time())))
+      return results
+   return wrapper
+
+@timeit
+def outer_permutations():
+   def permutations1(d, b, current = []):
+     if len(current) == d:
+       yield current
+     else:
+       for i in range(10):
+         if len(current) &lt; 2 or sum(current+[i]) == b:
+           yield from permutations1(d, b, current+[i])
+   yield from permutations1(3, 5)
+
+@timeit
+def list_results(a, b):
+   return [i for i in permutations(b) if sum(i) == a]
+
+
+v = outer_permutations()
+v1 = list_results(3, 5)
+</code></pre>
+
+<p>Output:</p>
+
+<pre><code>Result from function 'outer_permutations' achieved in 0.0006079673767089844
+Result from function 'list_results' achieved in 0.09148788452148438
+</code></pre>
+
+<p>Note that the output from both functions is:</p>
+
+<pre><code>[[0, 0, 5], [0, 1, 4], [0, 2, 3], [0, 3, 2], [0, 4, 1], [0, 5, 0], [1, 0, 4], [1, 1, 3], [1, 2, 2], [1, 3, 1], [1, 4, 0], [2, 0, 3], [2, 1, 2], [2, 2, 1], [2, 3, 0], [3, 0, 2], [3, 1, 1], [3, 2, 0], [4, 0, 1], [4, 1, 0], [5, 0, 0]]
+</code></pre>
+
+
+Title: What sort of time complexity would be required to solve the RSA Factoring Challenge?
+Tags: <algorithm><python-3.x><time-complexity><rsa><big-o>
+Body: <p>Although the challenge ended a long time ago, I'm kinda bored so I decided to try to factorise some of the numbers.</p>
+
+<p>I initially had an O(n) algorithm, but then, I decided to research big O notation.</p>
+
+<p>Apparently (I could be wrong), O(n) algorithms and O(2n) algorithms basically have the same running time. So do O(n) and O(4n) algorithms. In fact, O(n) and O(cn) algorithms (where c is an integer) essentially have the same running time.</p>
+
+<p>So now, I have an O(8n) algorithm, but it isn't quick enough for 77-bit numbers.</p>
+
+<p><strong>What sort of time complexity would be required to factorise the first few RSA numbers (in under 5-ish minutes)?</strong></p>
+
+<p>My O(8n) algorithm:</p>
+
+<pre><code>import math
+
+num = int(input())
+
+sq = math.sqrt(num)
+
+if num % 2 == 0:
+  print(2, int(num / 2))
+
+elif sq % 1 == sq:
+  print(int(sq), int(sq))
+
+else:
+
+  sq = round(sq)
+
+  a = 3
+  b = sq + (1 - (sq % 2))
+
+  c = ((b + 1) / 2)
+  d = ((b + 1) / 2)
+  c -= (1 - (c % 2))
+  d += (1 - (d % 2))
+
+  e = ((c + 1) / 2)
+  f = ((c + 1) / 2)
+  e -= (1 - (e % 2))
+  f += (1 - (f % 2))
+  g = ((d + 1) / 2) + d
+  h = ((d + 1) / 2) + d
+  g -= (1 - (g % 2))
+  h += (1 - (h % 2))
+
+
+  while a &lt;= sq and num % a != 0 and b &gt; 2 and num % b != 0 and c &lt;= sq and num % c != 0 and d &gt; 2 and num % d != 0 and e &lt;= sq and num % e != 0 and f &gt; 2 and num % f != 0 and g &lt;= sq and num % g != 0 and h &gt; 2 and num % h != 0:
+
+    a += 2
+    b -= 2
+    c += 2
+    d -= 2
+    e += 2
+    f -= 2
+    g += 2
+    h -= 2
+
+
+  if num % a == 0:
+    print(a, int(num / a))
+  elif num % b == 0:
+    print(b, int(num / b))
+  elif num % c == 0:
+    print(c, int(num / c))
+  elif num % d == 0:
+    print(d, int(num / d))
+  elif num % e == 0:
+    print(e, int(num / e))
+  elif num % f == 0:
+    print(f, int(num / f))
+  elif num % g == 0:
+    print(g, int(num / g))
+  elif num % h == 0:
+    print(h, int(num / h))
+</code></pre>
+
+
+Answer: <p>Your algorithm is poorly-implemented trial division. Throw it away.</p>
+
+<p>Here is my basic prime-number library, using the Sieve of Eratosthenes to enumerate prime numbers, the Miller-Rabin algorithm to recognize primes, and wheel factorization followed by Pollard's rho algorithm to factor composites, which I leave to you to translate to Python:</p>
+
+<pre><code>function primes(n)
+    i, p, ps, m := 0, 3, [2], n // 2
+    sieve := makeArray(0..m-1, True)
+    while i &lt; m
+        if sieve[i]
+            ps := p :: ps # insert at head of list
+            for j from (p*p-3)/2 to m step p
+                sieve[i] := False
+        i, p := i+1, p+2
+    return reverse(ps)
+
+function isPrime(n, k=5)
+    if n &lt; 2 then return False
+    for p in [2,3,5,7,11,13,17,19,23,29]
+        if n % p == 0 then return n == p
+    s, d = 0, n-1
+    while d % 2 == 0
+        s, d = s+1, d/2
+    for i from 0 to k
+        x = powerMod(randint(2, n-1), d, n)
+        if x == 1 or x == n-1 then next i
+        for r from 1 to s
+            x = (x * x) % n
+            if x == 1 then return False
+            if x == n-1 then next i
+        return False
+    return True
+
+function factors(n, limit=10000)
+    wheel := [1,2,2,4,2,4,2,4,6,2,6]
+    w, f, fs := 0, 2, []
+    while f*f &lt;= n and f &lt; limit
+        while n % f == 0
+            fs, n := f :: fs, n / f
+        f, w := f + wheel[w], w+1
+        if w = 11 then w = 3
+    if n == 1 return fs
+    h, t, g, c := 1, 1, 1, 1
+    while not isPrime(n)
+        repeat
+            h := (h*h+c) % n # the hare runs
+            h := (h*h+c) % n # twice as fast
+            t := (t*t+c) % n # as the tortoise
+            g := gcd(t-h, n)
+        while g == 1
+        if isPrime(g)
+            while n % g == 0
+                fs, n := g :: fs, n / g
+        h, t, g, c := 1, 1, 1, c+1
+    return sort(n :: fs)
+
+function powerMod(b, e, m)
+    x := 1
+    while e &gt; 0
+        if e%2 == 1
+            x, e := (x*b)%m, e-1
+        else b, e := (b*b)%m, e//2
+    return x
+
+function gcd(a, b)
+    if b == 0 then return a
+    return gcd(b, a % b)
+</code></pre>
+
+<p>Properly implemented, that algorithm should factor your 79-bit number nearly instantly.</p>
+
+<p>To factor larger numbers, you will have to work harder. Look up "elliptic curve factorization" and "self-initializing quadratic sieve" to find factoring algorithms that you can implement yourself.</p>
+
+

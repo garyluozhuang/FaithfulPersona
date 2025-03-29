@@ -1,0 +1,195 @@
+Title: How to check if two permutations are symmetric?
+Tags: <python><algorithm>
+Body: <p>Given two permutations <code>A</code> and <code>B</code> of <code>L</code> different elements, <code>L</code> is even, let's call these permutations &quot;symmetric&quot; (for a lack of a better term), if there exist <code>n</code> and <code>m</code>, <code>m &gt; n</code> such as (in python notation):</p>
+<pre><code> - A[n:m] == B[L-m:L-n]
+ - B[n:m] == A[L-m:L-n]
+ - all other elements are in place
+</code></pre>
+<p>Informally, consider</p>
+<pre><code>A = 0 1 2 3 4 5 6 7
+</code></pre>
+<p>Take any slice of it, for example <code>1 2</code>. It starts at the second index and its length is 2. Now take a slice symmetric to it: it ends at the penultimate index and is 2 chars long too, so it's <code>5 6</code>. Swapping these slices gives</p>
+<pre><code>B = 0 5 6 3 4 1 2 7
+</code></pre>
+<p>Now, <code>A</code> and <code>B</code> are &quot;symmetric&quot; in the above sense (<code>n=1, m=3</code>). On the other hand</p>
+<pre><code>A = 0 1 2 3 4 5 6 7
+B = 1 0 2 3 4 5 7 6
+</code></pre>
+<p>are not &quot;symmetric&quot; (no <code>n,m</code> with above properties exist).</p>
+<p>How can I write an algorithm in python that finds if two given permutations (=lists) are &quot;symmetric&quot; and if yes, find the <code>n</code> and <code>m</code>? For simplicity, let's consider only even <code>L</code> (because the odd case can be trivially reduced to the even one by eliminating the middle fixed element) and assume correct inputs (<code>set(A)==set(B), len(set(A))==len(A)</code>).</p>
+<p>(I have no problem bruteforcing all possible symmetries, but looking for something smarter and faster than that).</p>
+<p>Fun fact: the number of symmetric permutations for the given <code>L</code> is a <a href="https://en.wikipedia.org/wiki/Triangular_number" rel="noreferrer">Triangular number</a>.</p>
+<h3>I use <a href="https://gist.github.com/gebrkn/8b73949295853bdaf2b9" rel="noreferrer">this code</a> to test  out your answers.</h3>
+<p>Bounty update: many excellent answers here. <a href="https://stackoverflow.com/a/35589985/989121">@Jared Goguen's solution</a> appears to be the fastest.</p>
+<p>Final timings:</p>
+<pre><code>testing 0123456789 L= 10
+    test_alexis ok in 15.4252s
+    test_evgeny_kluev_A ok in 30.3875s
+    test_evgeny_kluev_B ok in 27.1382s
+    test_evgeny_kluev_C ok in 14.8131s
+    test_ian ok in 26.8318s
+    test_jared_goguen ok in 10.0999s
+    test_jason_herbburn ok in 21.3870s
+    test_tom_karzes ok in 27.9769s
+</code></pre>
+
+
+Title: Finding minimal distance between unsorted and sorted lists
+Tags: <javascript><python><algorithm><language-agnostic>
+Body: <p>Let A be a list and S a sorted list of the same elements. Assume all elements are different. How do I find a minimal set of "moves" (<code>move X before Y (or end)</code>) that turns A into S?</p>
+
+<p>Examples:</p>
+
+<pre><code>A = [8,1,2,3]
+S = [1,2,3,8]
+
+A =&gt; S requires one move: 
+   move 8 before end
+
+A = [9,1,2,3,0]
+S = [0,1,2,3,9]
+
+A =&gt; S requires two moves:
+   move 9 before 0
+   move 0 before 1
+</code></pre>
+
+<p>I prefer javascript or python, but any language will do.</p>
+
+
+Title: Comparing dictionaries based on a combination of keys
+Tags: <python><algorithm><dictionary>
+Body: <p>I have a list "records" like this</p>
+
+<pre><code>data = [
+    {'id':1, 'name': 'A', 'price': 10, 'url': 'foo'},
+    {'id':2, 'name': 'A', 'price': 20, 'url': 'bar'},
+    {'id':3, 'name': 'A', 'price': 30, 'url': 'baz'},
+    {'id':4, 'name': 'A', 'price': 10, 'url': 'baz'},
+    {'id':5, 'name': 'A', 'price': 20, 'url': 'bar'},
+    {'id':6, 'name': 'A', 'price': 30, 'url': 'foo'},
+    {'id':7, 'name': 'A', 'price': 99, 'url': 'quu'},
+    {'id':8, 'name': 'B', 'price': 10, 'url': 'foo'},
+]
+</code></pre>
+
+<p>I want to remove records that are "duplicates", where equality is defined by a list of logical conditions. Each element in the list is an OR condition, and all elements are ANDed together. For example:</p>
+
+<pre><code>filters = [  ['name'],   ['price', 'url']  ]
+</code></pre>
+
+<p>means that two records are considered equal if their name AND (their price OR url) are equal. For the above example:</p>
+
+<pre><code>For item 1 the duplicates are 4 (by name and price) and 6 (name+url)
+For item 2 - 5 (name+price, name+url)
+For item 3 - 4 (name+url) and 6 (name+price)
+For item 7 there are no duplicates (neither price nor url match)
+For item 8 there are no duplicates (name doesn't match)
+</code></pre>
+
+<p>So the resulting list must contain items 1, 2, 3, 7 and 8.</p>
+
+<p>Please take into account that</p>
+
+<ul>
+<li>there might be more AND conditions: <code>['name'], ['price', 'url'], ['weight'], ['size'], ...</code></li>
+<li>the OR groups in the conditions list can be longer than 2 items, e.g. <code>['name'], ['price', 'url', 'weight']...</code></li>
+<li>the source list is very long, an <code>O(n^2)</code> alogirthm is out of the question</li>
+</ul>
+
+
+Title: Maps (hashtables) in the real world
+Tags: <javascript><python><data-structures><dictionary>
+Body: <p>I'm trying to explain Map (aka hash table, dict) to someone who's new to programming. While the concepts of Array (=list of things) and Set (=bag of things) are familiar to everyone, I'm having a hard time finding a real-world metaphor for Maps (I'm specifically interested in python <code>dicts</code> and Javascript <code>Objects</code>). The often used <strong>dictionary/phone book analogy is incorrect</strong>, because dictionaries are sorted, while Maps are not - and this point is important to me. 
+So the question is: what would be a real world phenomena or device that behaves like Map in computing?</p>
+
+
+Title: Implementing python slice notation
+Tags: <php><python><arrays><algorithm><language-comparisons>
+Body: <p>I'm trying to reimplement python <a href="https://stackoverflow.com/questions/509211/good-primer-for-python-slice-notation">slice notation</a> in another language (php) and looking for a snippet (in any language or pseudocode) that would mimic the python logic. That is, given a list and a triple <code>(start, stop, step)</code> or a part thereof, determine correct values or defaults for all parameters and return a slice as a new list.</p>
+
+<p>I tried looking into <a href="http://hg.python.org/cpython/file/3d4d52e47431/Objects/sliceobject.c" rel="nofollow noreferrer">the source</a>. That code is far beyond my c skills, but I can't help but agree with the comment saying:</p>
+
+<pre><code>/* this is harder to get right than you might think */ 
+</code></pre>
+
+<p>Also, if something like this is already done, pointers will be greatly appreciated.</p>
+
+<p>This is my test bench (make sure your code passes before posting):</p>
+
+<pre><code>#place your code below
+code = """
+def mySlice(L, start=None, stop=None, step=None):
+or 
+&lt;?php function mySlice($L, $start=NULL, $stop=NULL, $step=NULL) ...
+or 
+function mySlice(L, start, stop, step) ...
+"""
+
+import itertools
+
+L = [0,1,2,3,4,5,6,7,8,9]
+
+if code.strip().startswith('&lt;?php'):
+     mode = 'php'
+
+if code.strip().startswith('def'):
+     mode = 'python'
+
+if code.strip().startswith('function'):
+     mode = 'js'
+
+if mode == 'php':
+    var, none = '$L', 'NULL'
+    print code, '\n'
+    print '$L=array(%s);' % ','.join(str(x) for x in L)
+    print "function _c($s,$a,$e){if($a!==$e)echo $s,' should be [',implode(',',$e),'] got [',implode(',',$a),']',PHP_EOL;}"
+
+if mode == 'python':
+    var, none = 'L', 'None'
+    print code, '\n'
+    print 'L=%r' % L
+    print "def _c(s,a,e):\n\tif a!=e:\n\t\tprint s,'should be',e,'got',a"
+
+if mode == 'js':
+    var, none = 'L', 'undefined'
+    print code, '\n'
+    print 'L=%r' % L
+    print "function _c(s,a,e){if(a.join()!==e.join())console.log(s+' should be ['+e.join()+'] got ['+a.join()+']');}"
+
+
+print
+
+n = len(L) + 3
+start = range(-n, n) + [None, 100, -100]
+stop  = range(-n, n) + [None, 100, -100]
+step  = range(-n, n) + [100, -100]
+
+for q in itertools.product(start, stop, step): 
+
+    if not q[2]: q = q[:-1]
+
+    actual = 'mySlice(%s,%s)' % (var, ','.join(none if x is None else str(x) for x in q))
+    slice_ = 'L[%s]' % ':'.join('' if x is None else str(x) for x in q)
+    expect = eval(slice_)
+
+    if mode == 'php':
+        expect = 'array(%s)' % ','.join(str(x) for x in expect)
+        print "_c(%r,%s,%s);" % (slice_, actual, expect)
+
+    if mode == 'python':
+        print "_c(%r,%s,%s);" % (slice_, actual, expect)
+
+    if mode == 'js':
+        print "_c(%r,%s,%s);" % (slice_, actual, expect)
+</code></pre>
+
+<p>how to use it:</p>
+
+<ul>
+<li>save into a file (<code>test.py</code>)</li>
+<li>place your python, php or javascript code between <code>"""</code>s</li>
+<li>run <code>python test.py | python</code> or <code>python test.py | php</code> or <code>python test.py | node</code></li>
+</ul>
+
+

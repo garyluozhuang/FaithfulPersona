@@ -1,0 +1,140 @@
+Title: Algorithm: What set of tiles of length N can be used to generate the most amount of Scrabble-valid words?
+Tags: <python><algorithm><scrabble>
+Body: <p>I'm trying to create a function <code>best_tiles</code> which takes in the number of tiles in your hand and returns the set of tiles that allows you to produce the most number of unique English-valid words, assuming that you can only use each tile once.</p>
+<p>For example, with the set of tiles in your hand <code>(A, B, C)</code> you can produce the words, CAB, BAC, AB, and BA (all of these are English words), so you can spell 4 unique words with that set. With <code>(B, A, A)</code>, you can spell 5 words: ABA, BAA, AA, AB, and BA. The goal is to find the set of letters which allows you to spell the most number of English-Valid words (without replacement).</p>
+<p>So if 5 was the maximum number of words that could be spelled with any combination of letters for N = 3, running <code>best_tiles( n = 3 )</code> would return <code>B, A, A</code>.</p>
+<p>I'm wondering how to implement this efficiently? My current approach doesn't scale well at all with number of letters.</p>
+<p>I read in a wordlist. In this case, I'm using enable.txt here: <a href="https://www.wordgamedictionary.com/enable/" rel="nofollow noreferrer">https://www.wordgamedictionary.com/enable/</a></p>
+<pre><code>import os
+path = &quot;enable.txt&quot;
+words = []
+with open(path , encoding='utf8') as f: 
+    for values in f:
+        words.append(list(values.strip().upper()))
+</code></pre>
+<p>I create a function <code>word_in_tiles</code> h/t smack89 which returns whether it is possible to construct a word given a tile set:</p>
+<pre><code>def word_in_tiles(word, tiles):
+  tiles_counter = collections.Counter(tiles)
+  return all(tiles_counter.get(ch, 0) == cnt for ch,cnt in 
+  collections.Counter(word).items())
+</code></pre>
+<p>I then create a function <code>get_all_words</code> which produces a list of all the possible words one can spell from a word list and a tile set.</p>
+<pre><code>def get_all_words(tile_set, words):
+    # words is a word list
+    return [i for i in words if word_in_tiles(i, tile_set)]
+</code></pre>
+<p>The extremely naive approach for identifying which tileset is the &quot;best&quot; for three letters is the following:</p>
+<p>I first create a list of every possible combination for a given length. So for length 3, I'd do:</p>
+<pre><code>import string
+import itertools 
+
+letters = string.ascii_lowercase
+all_three_letter_combinations = list(itertools.combinations_with_replacement(letters, 3))
+
+# Create a list of only words that are three letters are less
+three_letter = [i for i in words if len(i) &lt;= 3]
+
+sequence_dict = dict()
+    for i in all_three_letter_combinations:
+        string_test = &quot;&quot;.join(i).upper()
+        sequence_dict[i] = get_all_words(string_test, three_letter)
+</code></pre>
+<p>Then remove the values with no length and sort by the length of the result:</p>
+<pre><code>res = {k: v for k, v in sequence_dict.items() if len(v) &gt;= 1}
+
+def GetMaxLength(res):
+    return max((len(v), v, k) for k, v in res.items())[1:]
+</code></pre>
+<p>GetMaxLength(res)
+You get that, for three letters, the tile-set that produces the most english valid words is <code>T A E</code> which can produce the following words <code>['AE', 'AT', 'ATE', 'EAT', 'ET', 'ETA', 'TA', 'TAE', 'TEA']</code></p>
+<p>I'd like to be able to scale this up to as big as N = 15. What is the best procedure for doing this?</p>
+
+
+Title: Given a list of tuples, check to see if it's possible to construct a word in which the second value in the tuple is not consecutively repeated
+Tags: <python><algorithm><tuples>
+Body: <p>Let's say I have a list of tuples like so:</p>
+<pre><code>list_of_tuples = [('A', 'R'), ('B', 'R'), ('C', 'G'), ('D', 'G'), ('E', 'B'), ('D', 'B'), ('R', 'B'), ('F', 'R'), ('V', 'R'), ('A', 'G')]
+</code></pre>
+<p>The second value in each tuple will always either be <code>R</code>, <code>B</code>, or <code>G</code>. I'd like to create a function <code>validate</code> that checks to see if a certain word can be constructed using the letters in the first position of each tuple, but only if the letters in the section position of that tuple are not repeated.</p>
+<p>For example, it's possible to construct the word:</p>
+<p><code>ACE</code> with <code>(A, R)</code>, <code>(C, G)</code> and <code>(E, B)</code> since the second value in each tuple corresponds to <code>RGB</code> which doesn't repeat any letter consecutively.</p>
+<p><code>ACED</code> with <code>(A, R), (C, G), (E, B), and ('D', 'B')</code> is not possible since that would correspond to <code>RGBB</code> in which there is a consecutive B.</p>
+<p>Note that sometimes the same letter can have different letter in its second position, for example:</p>
+<p><code>('A', 'R') and ('A', 'G')</code>. You'd only be able to spell <code>ACE</code> if you selected the first tuple, not the second, otherwise the <code>G</code>'s would repeat.</p>
+<p>Also note that combinations like <code>GBRBG</code> are possible even though the second position letters &quot;repeat&quot; they don't repeat consecutively.</p>
+<p>So I'd like a function that can validate words in the following way:</p>
+<p><code>def validate(submitted_word, list_of_tuples)</code></p>
+<p>One possibility is to construct every possible combination of sequences that are possible with this set and the corresponding sequences that would be produced with the letters in the second sequence, filter out the ones that are valid words, and then filter out the ones that have consecutive repeats of letters, but I worry that will be to inefficient given how big the list of tuples can become.</p>
+
+
+Title: Find all combinations of letters, selecting each letter from a different key in a dictionary
+Tags: <python><algorithm><dictionary><iteration><permutation>
+Body: <p>Let's say we have this data structure:</p>
+
+<pre><code>class Lock:
+def __init__(self):
+    self.data1 = ['a', 'd', 'e', 'l', 's']
+    self.data2 = ['s', 'i', 'r', 't', 'n']
+    self.data3 = ['b', 'o', 'e', 'm', 'k']
+    self.data4 = ['f', 'y', 'u', 'n', 'g']
+</code></pre>
+
+<p>Alternatively, </p>
+
+<pre><code>d = {'1': ['a', 'd', 'e', 'l', 's'], '2': ['s', 'i', 'r', 't', 'n'], '3': ['b', 'o', 'e', 'm', 'k'], '4': ['f', 'y', 'u', 'n', 'g'] }
+</code></pre>
+
+<p>I want to find every possible combination of letters, given that each letter is selected from a different key or array. Order matters, so that the first letter always has to be from 'data1', second has to be from 'data2', etc.  </p>
+
+<p>The purpose is to then check these against a dictionary to see which ones are english-valid words.  I assumed getting a list of all the combinations, and then doing the check would be the fastest, but if that's not the case, I'd like some input. </p>
+
+
+Title: Given a list of words, identify all identical substrings of length 4 or greater
+Tags: <python><algorithm><counter><frequency>
+Body: <p>Let's say I have a list of foreign words:</p>
+
+<ol>
+<li>ilikuwa</li>
+<li>alikuwa</li>
+<li>nilifundisha</li>
+<li>anafundisha</li>
+<li>tunasoma</li>
+<li>tulisoma</li>
+</ol>
+
+<p>I want to identify within this list of words, substrings of length 4 or greater that are common in the words.  For example, the word "kuwa", "fundisha", and "soma" would all fall under this category.  </p>
+
+<p>Then, when I do frequency analysis re:</p>
+
+<pre><code>cnt = Counter()
+for lines in list:
+    cnt[words]
+print cnt.most_common(2000)
+</code></pre>
+
+<p>I want those substrings to be counted the number of times they appear in the overall list...such that the final output for: print cnt.most_common(3) would be something like.</p>
+
+<ol>
+<li>kuwa - 2</li>
+<li>fundisha - 2</li>
+<li>soma- 2</li>
+<li>ilikuwa- 1
+...etc</li>
+</ol>
+
+<p>I'm at a complete loss for how to go about doing this, though.  Any ideas?</p>
+
+
+Title: Find words and combinations of words that can be spoken the quickest
+Tags: <python><algorithm><cpu-word><nlp><linguistics>
+Body: <p>I'm a big fan of discovering sentences that can be rapped very quickly.  For example, "gotta read a little bit of Wikipedia" or "don't wanna wind up in the gutter with a bottle of malt." (George Watsky) </p>
+
+<p>I wanted to write a program in Python that would enable me to find words (or combinations of words) that can be articulated such that it sounds very fast when spoken.  </p>
+
+<p>I initially thought that words that had a high syllable to letter ratio would be the best, but upon writing a Python program to do find those words, I retrieved only very simple words that didn't really sound fast (e.g. "iowa").  </p>
+
+<p>So I'm at a loss at what actually makes words sound fast.  Is it the morpheme to letter ratio?  Is it the number of alternating vowel-consonant pairs?  </p>
+
+<p>How would you guys go about devising a python program to resolve this problem?</p>
+
+

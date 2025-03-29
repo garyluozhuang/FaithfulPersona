@@ -1,0 +1,361 @@
+Title: What am I missing in DFS in knight tour?
+Tags: <python><algorithm><recursion><knights-tour>
+Body: <p>I am trying to solve the <a href="http://en.wikipedia.org/wiki/Knight%27s_tour" rel="nofollow">knight tour problem</a> using DFS. I generated my graph (in this example I have 5x5 matrix):</p>
+
+<pre><code>{
+  0: set([11, 7]),
+  1: set([8, 10, 12]),
+  2: set([9, 11, 5, 13]),
+  3: set([12, 14, 6]),
+  4: set([13, 7]),
+  5: set([16, 2, 12]), 6: set([17, 3, 13, 15]), 7: set([0, 4, 10, 14, 16, 18]), 8: set([19, 1, 11, 17]), 9: set([2, 12, 18]), 10: set([1, 17, 21, 7]), 11: set([0, 2, 8, 18, 20, 22]), 12: set([1, 3, 5, 9, 15, 19, 21, 23]), 13: set([2, 4, 6, 16, 22, 24]), 14: set([23, 17, 3, 7]), 15: set([12, 22, 6]), 16: set([23, 7, 5, 13]), 17: set([6, 8, 10, 14, 20, 24]), 18: set([9, 11, 21, 7]), 19: set([8, 12, 22]), 20: set([17, 11]), 21: set([10, 12, 18]), 
+  22: set([19, 11, 13, 15]),
+  23: set([16, 12, 14]),
+  24: set([17, 13])
+}
+</code></pre>
+
+<p>Then I am trying to invoke DFS to find the path that has the length of 25 (each square was reached). To do this I track the current path, compare it with a desired length and if it was not reached recursively span DFS from all the neighbors. If there are no unchecked neighbors (we reached the dead end but there are still squares that should be reached), I am removing the last element from the path.</p>
+
+<pre><code>def knightTour(current, limit, path):
+    if len(path) == limit:
+        return path
+
+    path.append(current)
+
+    neighbors = graph[current]
+    if len(neighbors):
+        for i in neighbors:
+            if i not in set(path):
+                return knightTour(i, limit, path)
+    else:
+        path.pop()
+        return False
+
+knightTour(0, 24, [])
+</code></pre>
+
+<p>I am missing something obvious because in my case it can not find the full path and got stuck with <code>[0, 11, 2, 9, 12, 1, 8, 19, 22, 13, 4, 7, 10, 17, 6, 3, 14, 23, 16]</code>. Any idea where is my mistake?</p>
+
+
+Answer: <p>Complementary to Jon's excellent answer, here's another version that's closer to your original code, so you see that exactly was the problem:</p>
+
+<pre><code>def knightTour(current, limit, path):
+    path.append(current)    # add current before returning, or the last 
+    if len(path) == limit:  # node will be missing in the returned path
+        return path
+                            # (no need to check length)
+    for i in graph[current]:
+        if i not in path:   # (no point in creating a set in each iteration)
+            tour = knightTour(i, limit, path)
+            if tour:        # only return the path if it is not None, i.e.
+                return tour # if the recusion was succesful (backtracking)
+    else:
+        path.pop()          # (use implicit return None)
+</code></pre>
+
+<p>Called as <code>knightTour(0, 25, [])</code>, the result is <code>[0, 11, 2, 9, 12, 1, 8, 19, 22, 13, 4, 7, 10, 21, 18, 17, 6, 3, 14, 23, 16, 5, 15, 20, 24]</code></p>
+
+
+Title: simplifying binomial coefficient calculation
+Tags: <python><algorithm><math>
+Body: <p>I am trying to reduce the calculation for the following binomial sum:</p>
+
+<pre><code>def binomial(m, k):
+    result = 1
+    for i in range(k):
+        result = result * (m - i) / (i + 1)
+    return result
+
+n, t = 10, 20
+bin2 = binomial(n + t, n)
+for i in xrange(n + 1):
+    bin2 = binomial(n + t - i, n)    # recalculation here. 
+    # bin2 = bin2 * (t - i) / (n + t - i) my wrong implementation
+    print bin2
+</code></pre>
+
+<p>what I do not like here is that bin2 is recalculated all the time during the loop, when I should have used previously calculated bin2. I understand that I have to use formula from <a href="http://en.wikipedia.org/wiki/Combination" rel="nofollow noreferrer">here</a> <img src="https://i.sstatic.net/n4QfR.png" alt="enter image description here">,</p>
+
+<p>but my wrong implementation give incorrect result. Any idea how should I simplify it?</p>
+
+
+Answer: <p>You have an off-by-one error. Print before updating.</p>
+
+<pre><code>def binomial(m, k):
+    result = 1
+    for i in range(k):
+        result = result * (m - i) / (i + 1)
+    return result
+
+n, t = 10, 20
+bin2 = binomial(n + t, n)
+for i in xrange(n + 1):
+    print bin2
+    bin2 = bin2 * (t - i) / (n + t - i)
+</code></pre>
+
+
+Title: Find the number of divisors of (N!)^2
+Tags: <python><algorithm><math>
+Body: <p>I am trying to solve the <a href="https://www.hackerrank.com/challenges/equations" rel="nofollow">following problem</a>, which I reduced to the:
+<strong>find the number of divisors of (N!)^2</strong></p>
+
+<p>I coded up my solution, which I included as an answer here (for the reason of not being accused of not doing any work), and it works properly and fast for even big numbers, but because it does not pass all the tests due to the timeout, I think that my algorithm is not so efficient.</p>
+
+<p>Here is outline of my idea:</p>
+
+<ol>
+<li>Any number can be presented as <code>a0^b1*a1^b1*...*an^bn</code> which will have <code>(1 + b1)*(1 + b2)*...*(1 + bn)</code> divisors</li>
+<li>then <code>M^2</code> will have <code>(1 + 2b1)*(1 + 2b2)*...*(1 + 2bn)</code> divisors</li>
+<li>create a function which finds all factors of the number and save them as a hashmap</li>
+<li>have a function which will combine two hashmaps by adding the values of corresponding keys</li>
+<li>use these 2 functions to iterate through all the numbers from 2 to n to get all divisors of factorial</li>
+<li>use the function from 1. to get the answer</li>
+</ol>
+
+<p>I thought that this solution is pretty efficient, but it looks like there is a better way.
+Can anyone suggest me a better way?</p>
+
+
+Answer: <p>Your question has an easy and efficient solution. Note that <code>n!</code> is:</p>
+
+<pre><code>1 * 2 * 3 * 4 * 5 * 6 * 7 * 8 * ... * n
+</code></pre>
+
+<p>Let's think about how many times a prime factor appears in this product, for example <code>2</code>.
+It appears once every <code>2</code> factors. But once every <code>4</code> factors it appears twice. And once every <code>8</code> factors it appears thrice etc.
+In other words the factor <code>2</code> will appear in <code>n!</code> <code>sum(n//(2**e) for e in range(1, n))</code> times. The same is true for any prime factor <code>k</code>.</p>
+
+<p>You can implement this computation with:</p>
+
+<pre><code>import itertools as it
+
+def exp_for_factor_in_factorial(factor, n):
+    total = 0
+    for e in it.count(1):
+        if factor ** e &gt; n:
+            break
+        total += n // factor**e
+    return total
+</code></pre>
+
+<p>Now, in order to find all prime factors of <code>n!</code> we need to find all primes up to <code>n</code>, which is easily done using eratosthenes:</p>
+
+<pre><code>import math
+
+def sieve(n):
+    nums = [True] * (n+1)
+    nums[:2] = [False]*2
+    nums[4::2] = [False] * math.ceil((n-3)/2)
+    for i in range(3, int((n+1)**.5)+1, 2):
+        if nums[i]:
+            for j in range(i*i, n+1, 2*i):
+                nums[j] = False
+    return [i for i,k in enumerate(nums) if k]
+</code></pre>
+
+<p>And this allows us to obtain the factorization of <code>n!</code>:</p>
+
+<pre><code>def get_factorization_factorial(n):
+    primes = sieve(n)
+    factors = []
+    for p in primes:
+        factors.append((p, exp_for_factor_in_factorial(p, n)))
+    return factors
+</code></pre>
+
+<p>Finally, to compute the number of divisors from a factorization you can use the formula you already mentioned:</p>
+
+<pre><code>import operator as op
+from functools import reduce
+
+def get_num_divisors(factorization):
+    return reduce(op.mul, (e+1 for _, e in factorization), 1)
+</code></pre>
+
+<p>And so the final answer can be obtained as:</p>
+
+<pre><code>def divs_of_squared_fact(n):
+    return get_num_divisors((p, 2*e) for p, e in get_factorization_factorial(n))
+</code></pre>
+
+<p>Note that this solution is extremely more performant than yours:</p>
+
+<pre><code>In [41]: %%timeit
+    ...: for i in range(2, 1000):
+    ...:     x = divs_of_squared_fact(i)
+    ...: 
+1 loops, best of 3: 276 ms per loop
+
+In [42]: %%timeit
+    ...: for i in range(2, 1000):
+    ...:     x = divisorsOfFactorialSquare(i)
+    ...: 
+1 loops, best of 3: 7.89 s per loop
+</code></pre>
+
+<p>It is able to produce the number of divisors of <code>(5000!)^2</code> in about <code>2ms</code>, while the other one takes almost half a second:</p>
+
+<pre><code>In [47]: %timeit divs_of_squared_fact(5000)
+100 loops, best of 3: 2.07 ms per loop
+
+In [48]: %timeit divisorsOfFactorialSquare(5000)
+1 loops, best of 3: 439 ms per loop
+</code></pre>
+
+<p>Well, in fact the answers have different asymptotic complexity so the difference goes to infinity when increasing the argument.</p>
+
+
+Title: How to find a complexity of a built-in function in python
+Tags: <python><algorithm><time-complexity>
+Body: <p>I have the special case of the problem, but it would be nice to know whether it is possible for any function.</p>
+
+<p>So I want to find the position of a substring in a string. Ok, in python there is a <a href="https://docs.python.org/2/library/string.html#string.find" rel="noreferrer">find method</a> which does exactly what is needed.</p>
+
+<blockquote>
+  <p><strong>string.find(s, sub[, start[, end]])</strong></p>
+  
+  <p>Return the lowest index in s where
+  the substring sub is found such that sub is wholly contained in
+  s[start:end]. Return -1 on failure. Defaults for start and end and
+  interpretation of negative values is the same as for slices.</p>
+</blockquote>
+
+<p>Amazing, but the problem is that finding a big substring in a big string can run from <code>O(n*m)</code> to <code>O(n)</code> (which is a huge deal) <a href="http://en.wikipedia.org/wiki/String_searching_algorithm" rel="noreferrer">depending on the algorithm</a>. Documentation gives no information about time complexity, nor information about the underlying algorithm.</p>
+
+<p>I see few approaches how to resolve this:</p>
+
+<ul>
+<li>benchmark </li>
+<li>go to source code and try to understand it</li>
+</ul>
+
+<p>Both does not sound really easy (I hope that there is an easier way). So how can I find a complexity of a built-in function?</p>
+
+
+Answer: <p>You say, "go to source code and try to understand it," but it might be easier than you think.  Once you get to the actual implementation code, in <a href="https://hg.python.org/cpython/file/9c35973829e6/Objects/stringlib/fastsearch.h" rel="noreferrer">Objects/stringlib/fastsearch.h</a>, you find:</p>
+
+<pre><code>/* fast search/count implementation, based on a mix between boyer-
+   moore and horspool, with a few more bells and whistles on the top.
+   for some more background, see: http://effbot.org/zone/stringlib.htm */
+</code></pre>
+
+<p>The <a href="http://effbot.org/zone/stringlib.htm" rel="noreferrer">URL referenced there</a> has a good discussion of the algorithm and its complexity.</p>
+
+
+Title: Performance issues in Burrows-Wheeler in python
+Tags: <python><performance><algorithm>
+Body: <p>I was trying to implement <a href="http://en.wikipedia.org/wiki/Burrows%E2%80%93Wheeler_transform" rel="noreferrer">Burrows-Wheeler</a> transform in python. (This is one of the assignments in online course, but I hope I have done some work to be qualified to ask for help).</p>
+
+<p>The algorithm works as follows. Take a string which ends with a special character ($ in my case) and create all cyclic strings from this string. Sort all these strings alphabetically, having a special character always less then any other character. After this get the last element of each string.</p>
+
+<p>This gave me a oneliner: </p>
+
+<pre><code>''.join([i[-1] for i in sorted([text[i:] + text[0:i] for i in xrange(len(text))])]
+</code></pre>
+
+<p>Which is correct and reasonably fast for reasonably big strings (which is enough to solve the problem):</p>
+
+<pre><code> 60 000 chars - 16 secs
+ 40 000 chars - 07 secs
+ 25 000 chars - 02 secs
+</code></pre>
+
+<p>But when I tried to process a really huge string with few millions of chars, I failed (it takes too much time to process).</p>
+
+<p>I assume that the problem is with storing too many strings in the memory.</p>
+
+<p>Is there any way to overcome this?</p>
+
+<p>P.S. just want to point out that also this might look like a homework problem, my solution already passes the grader and I am just looking for a way to make it faster. Also I am not spoiling the fun for other people, because if they would like to find solution, wiki article has one which is similar to mine. I also checked <a href="https://codereview.stackexchange.com/a/21120/30711">this questio</a>n which sounds similar but answers a harder question, how to decode the string coded with this algorithm.</p>
+
+
+Answer: <p>It takes a long time to make all those string slices with long strings. It's <em>at least</em> O(N^2) (since you create N strings of N length, and each one has to be copied into memory taking its source data from the original), which destroys the overall performance and makes the sorting irrelevant. Not to mention the memory requirement!</p>
+
+<p>Instead of actually slicing the string, the next thought is to order the <code>i</code> values you use to create the cyclic strings, in order of how the resulting string <em>would</em> compare - without actually creating it. This turns out to be somewhat tricky. (<em>Removed/edited some stuff here that was wrong; please see @TimPeters' answer.</em>)</p>
+
+<p>The approach I've taken here is to bypass the standard library - which makes it difficult (<em>though not impossible</em>) to compare those strings 'on demand' - and do my own sorting. The natural choice of algorithm here is <strong>radix sort</strong>, since we need to consider the strings one character at a time anyway.</p>
+
+<p>Let's get set up first. I am writing code for version 3.2, so season to taste. (In particular, in 3.3 and up, we could take advantage of <code>yield from</code>.) I am using the following imports:</p>
+
+<pre><code>from random import choice
+from timeit import timeit
+from functools import partial
+</code></pre>
+
+<p>I wrote a general-purpose radix sort function like this:</p>
+
+<pre><code>def radix_sort(values, key, step=0):
+    if len(values) &lt; 2:
+        for value in values:
+            yield value
+        return
+
+    bins = {}
+    for value in values:
+        bins.setdefault(key(value, step), []).append(value)
+
+    for k in sorted(bins.keys()):
+        for r in radix_sort(bins[k], key, step + 1):
+            yield r
+</code></pre>
+
+<p>Of course, we don't need to be general-purpose (our 'bins' can only be labelled with single characters, and presumably you <strong>really</strong> mean to apply the algorithm to a sequence of <strong>bytes</strong> ;) ), but it doesn't hurt. Might as well have something reusable, right? Anyway, the idea is simple: we handle a base case, and then we drop each element into a "bin" according to the result from the key function, and then we pull values out of the bins in sorted bin order, recursively sorting each bin's contents.</p>
+
+<p>The interface requires that <code>key(value, n)</code> gives us the <code>n</code>th "radix" of <code>value</code>. So for simple cases, like comparing strings directly, that could be a simple as <code>lambda v, n: return v[n]</code>. Here, though, the idea is to compare indices into the string, according to the data in the string at that point (considered cyclically). So let's define a key:</p>
+
+<pre><code>def bw_key(text, value, step):
+    return text[(value + step) % len(text)]
+</code></pre>
+
+<p>Now the trick to getting the right results is to remember that we're conceptually joining up the last characters of the strings we aren't actually creating. If we consider the virtual string made using index <code>n</code>, its last character is at index <code>n - 1</code>, because of how we wrap around - and a moment's thought will confirm to you that this still works when <code>n == 0</code> ;) . [However, when we wrap forwards, we still need to keep the string index in-bounds - hence the modulo operation in the key function.]</p>
+
+<p>This is a general key function that needs to be passed in the <code>text</code> to which it will refer when transforming the <code>value</code>s for comparison. That's where <code>functools.partial</code> comes in - you could also just mess around with <code>lambda</code>, but this is arguably cleaner, and I've found it's usually faster, too.</p>
+
+<p>Anyway, now we can easily write the actual transform using the key:</p>
+
+<pre><code>def burroughs_wheeler_custom(text):
+    return ''.join(text[i - 1] for i in radix_sort(range(len(text)), partial(bw_key, text)))
+    # Notice I've dropped the square brackets; this means I'm passing a generator
+    # expression to `join` instead of a list comprehension. In general, this is
+    # a little slower, but uses less memory. And the underlying code uses lazy
+    # evaluation heavily, so :)
+</code></pre>
+
+<p>Nice and pretty. Let's see how it does, shall we? We need a standard to compare it against:</p>
+
+<pre><code>def burroughs_wheeler_standard(text):
+    return ''.join([i[-1] for i in sorted([text[i:] + text[:i] for i in range(len(text))])])
+</code></pre>
+
+<p>And a timing routine:</p>
+
+<pre><code>def test(n):
+    data = ''.join(choice('abcdefghijklmnopqrstuvwxyz') for i in range(n)) + '$'
+    custom = partial(burroughs_wheeler_custom, data)
+    standard = partial(burroughs_wheeler_standard, data)
+    assert custom() == standard()
+    trials = 1000000 // n
+    custom_time = timeit(custom, number=trials)
+    standard_time = timeit(standard, number=trials)
+    print("custom: {} standard: {}".format(custom_time, standard_time))
+</code></pre>
+
+<p>Notice the math I've done to decide on a number of <code>trials</code>, inversely related to the length of the <code>test</code> string. This should keep the total time used for testing in a reasonably narrow range - right? ;) (Wrong, of course, since we established that the <code>standard</code> algorithm is at least O(N^2).)</p>
+
+<p>Let's see how it does (*drumroll*):</p>
+
+<pre><code>&gt;&gt;&gt; imp.reload(burroughs_wheeler)
+&lt;module 'burroughs_wheeler' from 'burroughs_wheeler.py'&gt;
+&gt;&gt;&gt; burroughs_wheeler.test(100)
+custom: 4.7095093091438684 standard: 0.9819262643716229
+&gt;&gt;&gt; burroughs_wheeler.test(1000)
+custom: 5.532266880287807 standard: 2.1733253807396977
+&gt;&gt;&gt; burroughs_wheeler.test(10000)
+custom: 5.954826800612864 standard: 42.50686064849015
+</code></pre>
+
+<p>Whoa, that's a bit of a frightening jump. Anyway, as you can see, the new approach adds a ton of overhead on short strings, but enables the actual sorting to be the bottleneck instead of string slicing. :)</p>
+
+

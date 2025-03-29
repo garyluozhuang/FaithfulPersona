@@ -1,0 +1,228 @@
+Title: Smoothen edges of a non-binary image
+Body: <p>I'm making some photo-editing tools in <code>python</code> using <code>PIL</code> (<code>Python Imaging Library</code>), and I was trying to make a program which converts a photo to its 'painted' version.</p>
+
+<p>I've managed to make a program which converts a photo into its distinct colours, but the problem is that the algorithm I'm using is operating on every pixel, meaning that the resulting image has very jagged differences between colours.</p>
+
+<p>Ideally, I'd like to smoothen out these edges, but I don't know how!</p>
+
+<p>I've checked out <a href="https://pythontic.com/image-processing/pillow/edge-enhancement-filter" rel="nofollow noreferrer">this site</a> for some help, but the method there produces quite different results to what I need.</p>
+
+<p>My Starting Image:
+<a href="https://i.sstatic.net/ulcpU.jpg" rel="nofollow noreferrer"><img src="https://i.sstatic.net/ulcpU.jpg" alt="Starting Image"></a></p>
+
+<p>My Image with Distinct Colours:
+<a href="https://i.sstatic.net/S9i15.png" rel="nofollow noreferrer"><img src="https://i.sstatic.net/S9i15.png" alt="Image with Distinct Colours"></a></p>
+
+<p>I would like to smoothen the edges in the image above.</p>
+
+<p>Results of using the method which doesn't quite work:
+<a href="https://i.sstatic.net/SJqlU.png" rel="nofollow noreferrer"><img src="https://i.sstatic.net/SJqlU.png" alt="Results of using he method which doesn&#39;t quite work"></a></p>
+
+<p>As you can see, using the technique doesn't smoothen the edges into natural-looking curves; instead it creates jagged edges.</p>
+
+<p>I know I should provide sample output, but suprisingly, I haven't actually got it, so I'll describe it as best as I can. Simply put, I want to smoothen the edges between the different colours.</p>
+
+<p>I've seen something called a Gaussian blur, but I'm not quite sure as to how to apply it here as the answers I've seen always mention some sort of threshold, and are usually to do with binary images, so I don't think it can apply here.</p>
+
+
+Title: Problems with using a rough greyscale algorithm?
+Body: <p>So I'm designing a few programs for editing photos in <code>python</code> using <code>PIL</code> and one of them was converting an image to greyscale (I'm avoiding the use of any functions from <code>PIL</code>).</p>
+
+<p>The algorithm I've employed is simple: for each pixel (colour-depth is 24), I've calculated the average of the <code>R</code>, <code>G</code> and <code>B</code> values and set the RGB values to this average.</p>
+
+<p>My program was producing greyscale images which seemed accurate, but I was wondering if I'd employed the correct algorithm, and I came across <a href="https://stackoverflow.com/a/12201744/7908770">this answer</a> to a question, where it seems that the 'correct' algorithm is to calculate <code>0.299 R + 0.587 G + 0.114 B</code>.</p>
+
+<p>I decided to compare my program to this algorithm. I generated a greyscale image using my program and another one (using the same input) from <a href="https://pinetools.com/grayscale-image" rel="noreferrer">a website online</a> (the top Google result for <code>'image to grayscale'</code>.</p>
+
+<p>To my naked eye, it seemed that they were exactly the same, and if there was any variation, I couldn't see it. However, I decided to use <a href="https://online-image-comparison.com/" rel="noreferrer">this website</a> (top Google result for <code>'compare two images online'</code>) to compare my greyscale images. It turned out that deep in the pixels, they had slight variations, but none which were perceivable to the human eye at a first glance (differences can be spotted, but usually only when the images are laid upon each other or switched between within milliseconds).</p>
+
+<p><strong>My Questions (the first is the main question)</strong>: </p>
+
+<ol>
+<li><strong>Are there any disadvantages to using my 'rough' greyscale algorithm?</strong></li>
+<li><strong>Does anyone have any input images where my greyscale algorithm would produce a visibly different image to the one that would be 'correct' ?</strong></li>
+<li><strong>Are there any colours/RBG combinations for which my algorithm won't work as well?</strong></li>
+</ol>
+
+<p>My key piece of code (if needed):</p>
+
+<pre><code>def greyScale(pixelTuple):
+    return tuple([round(sum(pixelTuple) / 3)] * 3)
+</code></pre>
+
+<p>The 'correct' algorithm (which seems to heavily weight green):</p>
+
+<pre><code>def greyScale(pixelTuple):
+    return tuple([round(0.299 * pixelTuple[0] + 0.587 * pixelTuple[1] + 0.114 * pixelTuple[2])] * 3)
+</code></pre>
+
+<p>My input image:
+<a href="https://i.sstatic.net/7rtQk.jpg" rel="noreferrer"><img src="https://i.sstatic.net/7rtQk.jpg" alt="My input image"></a></p>
+
+<p>The greyscale image my algorithm produces:
+<a href="https://i.sstatic.net/FvYYq.jpg" rel="noreferrer"><img src="https://i.sstatic.net/FvYYq.jpg" alt="The greyscale image my algorithm produces"></a></p>
+
+<p>The greyscale image which is 'correct':
+<a href="https://i.sstatic.net/jECAG.png" rel="noreferrer"><img src="https://i.sstatic.net/jECAG.png" alt="The greyscale image which is &#39;correct&#39;"></a></p>
+
+<p>When the greyscale images are compared online (highlighted red are the differences, using a fuzz of 10%):
+<a href="https://i.sstatic.net/kgCMN.jpg" rel="noreferrer"><img src="https://i.sstatic.net/kgCMN.jpg" alt="When the greyscale images are compared online (highlighted red are the differences, using a fuzz of 10%)"></a></p>
+
+<p>Despite the variations in pixels highlighted above, the greyscale images above appear as nearly the exact same (at least, to me).</p>
+
+<p>Also, regarding my first question, if anyone's interested, <a href="http://www.tannerhelland.com/3643/grayscale-image-algorithm-vb6/" rel="noreferrer">this site</a> has done some analysis on different algorithms for conversions to greyscale and also has some custom algorithms.</p>
+
+<p><strong>EDIT</strong>:</p>
+
+<p>In response to @Szulat's answer, my algorithm <strong>actually</strong> produces this image instead (ignore the bad cropping, the original image had three circles but I only needed the first one):</p>
+
+<p><a href="https://i.sstatic.net/GIFDX.png" rel="noreferrer"><img src="https://i.sstatic.net/GIFDX.png" alt="This is what my algorithm **actually** produces"></a></p>
+
+<p>In case people are wondering what the reason for converting to greyscale is (as it seems that the algorithm depends on the purpose), I'm just making some simple photo editing tools in <code>python</code> so that I can have a mini-Photoshop and don't need to rely on the Internet to apply filters and effects.</p>
+
+<p><strong>Reason for Bounty</strong>: Different answers here are covering different things, which are all relevant and helpful. This makes it quite difficult to choose which answer to accept. I've started a bounty because I like a few answers listed here, but also because it'd be nice to have a single answer which covers everything I need for this question.</p>
+
+
+Title: What's the Time Complexity of my Primality Test?
+Body: <p>I have a basic understanding of how to calculate Time Complexities, but I'm not sure how to calculate it in this case due to the random nature of primes.</p>
+
+<p>A quick explanation --> Essentially, I'm keeping a running count of the remainders so that I know when the next prime is.</p>
+
+<p>My code:</p>
+
+<pre><code>import math
+
+n = int(input("Enter the number:\t"))
+
+primeList = []
+checkList = []
+
+number = 3
+isPrime = True
+while number &lt;= math.sqrt(n) and isPrime:
+
+    isChanged = False
+    for i, checkNum in enumerate(checkList):
+        if checkNum == 1:
+            isChanged = True
+            checkList[i] = primeList[i]
+        else:
+            checkList[i] = checkNum - 1
+
+    if not isChanged:
+
+        primeList.append(number)
+        checkList.append(number)
+
+        if n % number == 0:
+            isPrime = False
+
+    number += 2
+
+if isPrime:
+    print("Prime")
+else:
+    print("Not Prime")
+</code></pre>
+
+
+Title: How to get this list of combinations?
+Body: <p>I have two numbers, N and L (let's say 5 and 3).</p>
+
+<p>How can I generate every possible <code>list</code> where the sum of the list is equal to N (5) and the length of every <code>list</code> is L (3)?</p>
+
+<p>Example output (in this case):</p>
+
+<pre><code>[0, 0, 5]
+[0, 1, 4]
+[0, 2, 3]
+[0, 3, 2]
+...
+[0, 5, 0]
+...
+[1, 4, 0]
+...
+[5, 0, 0]
+</code></pre>
+
+<p>I've checked out <code>itertools</code> and its <code>combinations</code> and <code>permutations</code> functions, but they don't seem right for the task.</p>
+
+
+Title: What sort of time complexity would be required to solve the RSA Factoring Challenge?
+Body: <p>Although the challenge ended a long time ago, I'm kinda bored so I decided to try to factorise some of the numbers.</p>
+
+<p>I initially had an O(n) algorithm, but then, I decided to research big O notation.</p>
+
+<p>Apparently (I could be wrong), O(n) algorithms and O(2n) algorithms basically have the same running time. So do O(n) and O(4n) algorithms. In fact, O(n) and O(cn) algorithms (where c is an integer) essentially have the same running time.</p>
+
+<p>So now, I have an O(8n) algorithm, but it isn't quick enough for 77-bit numbers.</p>
+
+<p><strong>What sort of time complexity would be required to factorise the first few RSA numbers (in under 5-ish minutes)?</strong></p>
+
+<p>My O(8n) algorithm:</p>
+
+<pre><code>import math
+
+num = int(input())
+
+sq = math.sqrt(num)
+
+if num % 2 == 0:
+  print(2, int(num / 2))
+
+elif sq % 1 == sq:
+  print(int(sq), int(sq))
+
+else:
+
+  sq = round(sq)
+
+  a = 3
+  b = sq + (1 - (sq % 2))
+
+  c = ((b + 1) / 2)
+  d = ((b + 1) / 2)
+  c -= (1 - (c % 2))
+  d += (1 - (d % 2))
+
+  e = ((c + 1) / 2)
+  f = ((c + 1) / 2)
+  e -= (1 - (e % 2))
+  f += (1 - (f % 2))
+  g = ((d + 1) / 2) + d
+  h = ((d + 1) / 2) + d
+  g -= (1 - (g % 2))
+  h += (1 - (h % 2))
+
+
+  while a &lt;= sq and num % a != 0 and b &gt; 2 and num % b != 0 and c &lt;= sq and num % c != 0 and d &gt; 2 and num % d != 0 and e &lt;= sq and num % e != 0 and f &gt; 2 and num % f != 0 and g &lt;= sq and num % g != 0 and h &gt; 2 and num % h != 0:
+
+    a += 2
+    b -= 2
+    c += 2
+    d -= 2
+    e += 2
+    f -= 2
+    g += 2
+    h -= 2
+
+
+  if num % a == 0:
+    print(a, int(num / a))
+  elif num % b == 0:
+    print(b, int(num / b))
+  elif num % c == 0:
+    print(c, int(num / c))
+  elif num % d == 0:
+    print(d, int(num / d))
+  elif num % e == 0:
+    print(e, int(num / e))
+  elif num % f == 0:
+    print(f, int(num / f))
+  elif num % g == 0:
+    print(g, int(num / g))
+  elif num % h == 0:
+    print(h, int(num / h))
+</code></pre>
+
+

@@ -1,0 +1,429 @@
+Title: How to check if two permutations are symmetric?
+Tags: <python><algorithm>
+Body: <p>Given two permutations <code>A</code> and <code>B</code> of <code>L</code> different elements, <code>L</code> is even, let's call these permutations &quot;symmetric&quot; (for a lack of a better term), if there exist <code>n</code> and <code>m</code>, <code>m &gt; n</code> such as (in python notation):</p>
+<pre><code> - A[n:m] == B[L-m:L-n]
+ - B[n:m] == A[L-m:L-n]
+ - all other elements are in place
+</code></pre>
+<p>Informally, consider</p>
+<pre><code>A = 0 1 2 3 4 5 6 7
+</code></pre>
+<p>Take any slice of it, for example <code>1 2</code>. It starts at the second index and its length is 2. Now take a slice symmetric to it: it ends at the penultimate index and is 2 chars long too, so it's <code>5 6</code>. Swapping these slices gives</p>
+<pre><code>B = 0 5 6 3 4 1 2 7
+</code></pre>
+<p>Now, <code>A</code> and <code>B</code> are &quot;symmetric&quot; in the above sense (<code>n=1, m=3</code>). On the other hand</p>
+<pre><code>A = 0 1 2 3 4 5 6 7
+B = 1 0 2 3 4 5 7 6
+</code></pre>
+<p>are not &quot;symmetric&quot; (no <code>n,m</code> with above properties exist).</p>
+<p>How can I write an algorithm in python that finds if two given permutations (=lists) are &quot;symmetric&quot; and if yes, find the <code>n</code> and <code>m</code>? For simplicity, let's consider only even <code>L</code> (because the odd case can be trivially reduced to the even one by eliminating the middle fixed element) and assume correct inputs (<code>set(A)==set(B), len(set(A))==len(A)</code>).</p>
+<p>(I have no problem bruteforcing all possible symmetries, but looking for something smarter and faster than that).</p>
+<p>Fun fact: the number of symmetric permutations for the given <code>L</code> is a <a href="https://en.wikipedia.org/wiki/Triangular_number" rel="noreferrer">Triangular number</a>.</p>
+<h3>I use <a href="https://gist.github.com/gebrkn/8b73949295853bdaf2b9" rel="noreferrer">this code</a> to test  out your answers.</h3>
+<p>Bounty update: many excellent answers here. <a href="https://stackoverflow.com/a/35589985/989121">@Jared Goguen's solution</a> appears to be the fastest.</p>
+<p>Final timings:</p>
+<pre><code>testing 0123456789 L= 10
+    test_alexis ok in 15.4252s
+    test_evgeny_kluev_A ok in 30.3875s
+    test_evgeny_kluev_B ok in 27.1382s
+    test_evgeny_kluev_C ok in 14.8131s
+    test_ian ok in 26.8318s
+    test_jared_goguen ok in 10.0999s
+    test_jason_herbburn ok in 21.3870s
+    test_tom_karzes ok in 27.9769s
+</code></pre>
+
+
+Answer: <p>I rewrote the code without some of the complexity (and errors).</p>
+
+<pre><code>def test_o_o(a, b):
+
+    L = len(a)
+    H = L//2
+    n, m = 0, H-1
+
+    # find the first difference in the left-side
+    while n &lt; H:
+        if a[n] != b[n]: break
+        n += 1
+    else: return
+
+    # find the last difference in the left-side
+    while m &gt; -1:
+        if a[m] != b[m]: break 
+        m -= 1
+    else: return
+
+    # for slicing, we want end_index+1
+    m += 1
+
+    # compare each slice for equality
+    # order: beginning, block 1, block 2, middle, end
+    if (a[0:n] == b[0:n] and \
+        a[n:m] == b[L-m:L-n] and \
+        b[n:m] == a[L-m:L-n] and \
+        a[m:L-m] == b[m:L-m] and \
+        a[L-n:L] == b[L-n:L]):
+
+        return n, m
+</code></pre>
+
+<p>The implementation is both elegant and efficient.</p>
+
+<p>The <code>break</code> into <code>else: return</code> structures ensure that the function returns at the soonest possible point. They also validate that <code>n</code> and <code>m</code> have been set to valid values, but this does not appear to be necessary when explicitly checking the slices. These lines can be removed with no noticeable impact on the timing.</p>
+
+<p>Explicitly comparing the slices will also short-circuit as soon as one evaluates to <code>False</code>. </p>
+
+<p>Originally, I checked whether a permutation existed by transforming <code>b</code> into <code>a</code>:</p>
+
+<pre><code>b = b[:]
+b[n:m], b[L-m:L-n] = b[L-m:L-n], b[n:m]
+if a == b:
+   return n, m
+</code></pre>
+
+<p>But this is slower than explicitly comparing the slices. Let me know if the algorithm doesn't speak for itself and I can offer further explanation (maybe even proof) as to why it works and is minimal.</p>
+
+
+Title: Finding minimal distance between unsorted and sorted lists
+Tags: <javascript><python><algorithm><language-agnostic>
+Body: <p>Let A be a list and S a sorted list of the same elements. Assume all elements are different. How do I find a minimal set of "moves" (<code>move X before Y (or end)</code>) that turns A into S?</p>
+
+<p>Examples:</p>
+
+<pre><code>A = [8,1,2,3]
+S = [1,2,3,8]
+
+A =&gt; S requires one move: 
+   move 8 before end
+
+A = [9,1,2,3,0]
+S = [0,1,2,3,9]
+
+A =&gt; S requires two moves:
+   move 9 before 0
+   move 0 before 1
+</code></pre>
+
+<p>I prefer javascript or python, but any language will do.</p>
+
+
+Answer: <p>This problem is equivalent to <a href="http://en.wikipedia.org/wiki/Longest_increasing_subsequence" rel="nofollow noreferrer">longest increasing subsequence</a> problem. </p>
+
+<p>You will have to define a comparison operator <code>less</code>. <code>less(a, b)</code> will return <code>true</code> if and only if <code>a</code> is before <code>b</code> in the target sequence. Now using this comparison operator, compute the maximum increasing sub sequence of the source sequence. You will have to move each element that is not part of this sub sequence (otherwise the sub sequence will not be maximum) and you can move it exactly once(moving it to its target position). </p>
+
+<p>EDIT: As requested by amit here is my proof to the statement above:
+Lets we denote the target sequence <code>B</code> and lets denote the source sequence <code>A</code>. Let <code>n = |A|</code> and let <code>k</code> be the length of the longest increasing sequence as described above.</p>
+
+<ul>
+<li>Let's assume it is possible to reach <code>B</code> from <code>A</code> with less moves than <code>n - k</code>. This means that at least <code>n - k + 1</code> elements from the <code>A</code> will not be moved. Let s<sub>1</sub>,s<sub>2</sub>,...s<sub>m</sub> be the set of elements that are not moved. From the assumption we know that <code>m &gt; k</code>. Now as these elements have not moved, than their relative position with respect to each other can not have changed. Thus the relative positions of all this elements in the target sequence <code>B</code> is the same as the one in <code>A</code>. Therefor the operator less(s<sub>i</sub>, s<sub>j</sub>) as defined above should be true for any <code>i</code>, <code>j</code>. But if this is true then s<sub>1</sub>,s<sub>2</sub>,...s<sub>m</sub> is increasing sequence and as <code>m &gt; k</code> this leads to a contradiction with the assumption that k is the length of the longest increasing sequence.</li>
+<li>Now lets show an algorithm to reach <code>B</code> from <code>A</code> by moving all elements but the ones that are part of the longest increasing sequence. We will move the elements in the order they appear in B. We will not move elements that are part of the longest increasing sequence. If the current element is the first one in B, we simply move it to the beginning of the sequence. Otherwise we move the current element right <strong>after</strong> the position of the previous element in B. Note that this element may either be the previous element we've moved or an element from the longest increasing sequence. Note that at each step when we are about to move element with index <code>i</code>, all elements with index <code>1, 2, ...i-1</code> will already be with correct relative positions with respect to each other. </li>
+</ul>
+
+<p>EDIT: adding some code to make the answer clearer. I don't feel an expert in javascript so feel free to correct or criticize my solution.</p>
+
+<p>Let's define a function <code>transform(a, s)</code> that takes two parameters - lists a and b as described in the statement. First I will create a map <code>positions</code> that maps each element in <code>a</code> to its position in s:</p>
+
+<pre><code>var positions = {};
+for (var i = 0; i &lt; a.length; ++i) {
+  positions[a[i]] = i;
+}
+</code></pre>
+
+<p>Now that I have this array I can define a helper function less as described in my answer above. Less will take two values <code>a</code> and <code>b</code>(and the helper map I just created) and return true if and only if <code>a</code> is before <code>b</code> in <code>s</code>(the target list):</p>
+
+<pre><code>function less(a, b, positions) {
+  return positions[a] &lt; positions[b];
+}
+</code></pre>
+
+<p>Now I will not describe how can we find the maximum increasing subsequence in <code>a</code> with respect to that comparison operator. You can have a look at <a href="https://stackoverflow.com/q/2631726/812912">this question</a> for detailed explanation how to do that. I will simply assume that I have a function defined:</p>
+
+<pre><code>function max_increasing_subsequence(a, positions)
+</code></pre>
+
+<p>That returns the maximum increasing subsequence in <code>a</code> with respect to the comparison operator <code>less</code> as defined above (using <code>positions</code>)as a list. I will use your second example to illustrate what we have so far:</p>
+
+<pre><code>A = [9,1,2,3,0]
+S = [0,1,2,3,9]
+</code></pre>
+
+<p>The values in positions will be as follow:</p>
+
+<pre><code>positions = { 0 : 0,
+              1 : 1,
+              2 : 2,
+              3 : 3,
+              9 : 4}
+</code></pre>
+
+<p>And the result of <code>max_increasing_subsequence(a, positions)</code> will be <code>[1, 2, 3]</code>. By the way if there may be repeating elements in <code>a</code> it may be better to return indices instead of the elements from <code>max_increasing_subsequence</code>(in this particular example the difference will not be visible).</p>
+
+<p>Now I will create another helper map to indicate which are the elements included in the maximum increasing subsequence:</p>
+
+<pre><code>var included = {};
+l = max_increasing_subsequence(a, positions);
+for (var i = 0; i &lt; l.length; ++i) {
+  included[l[i]] = true;
+}
+</code></pre>
+
+<p>Now you can finish up the solution with a single iteration over <code>s</code>. I will add a special case for the last element to make code easier to understand:</p>
+
+<pre><code>if (!(s[s.length - 1] in included)) {
+  console.log("Move" + s[s.length - 1] + " at the end");
+}
+for (var i = s.length - 2; i &gt;= 0; --i) {
+  if (!(s[i] in included)) {
+    console.log("Move" + s[i] + " before " + s[i + 1]);
+  }
+}
+</code></pre>
+
+<p>Please note that in the solution above I assume that each time you log a new command, you log it with respect to the ordering of the array <code>a</code> right after all previous commands have been executed.</p>
+
+<p>So in total I believe transform should look something like this:</p>
+
+<pre><code>function transform(a, s) {
+  var positions = {};
+  for (var i = 0; i &lt; a.length; ++i) {
+    positions[a[i]] = i;
+  }
+  var included = {};
+  l = max_increasing_subsequence(a, positions);
+  var included = {};
+  for (var i = 0; i &lt; l.length; ++i) {
+    included[l[i]] = true;
+  }
+  if (!(s[s.length - 1] in included)) {
+    console.log("Move" + s[s.length - 1] + " at the end");
+  }
+  for (var i = s.length - 2; i &gt;= 0; --i) { // note s.length - 2 - don't process last element
+    if (!(s[i] in included)) {
+      console.log("Move" + s[i] + " before " + s[i + 1]);
+    }
+  }
+}
+</code></pre>
+
+<p>I hope this code makes my answer more clear. </p>
+
+
+Title: Comparing dictionaries based on a combination of keys
+Tags: <python><algorithm><dictionary>
+Body: <p>I have a list "records" like this</p>
+
+<pre><code>data = [
+    {'id':1, 'name': 'A', 'price': 10, 'url': 'foo'},
+    {'id':2, 'name': 'A', 'price': 20, 'url': 'bar'},
+    {'id':3, 'name': 'A', 'price': 30, 'url': 'baz'},
+    {'id':4, 'name': 'A', 'price': 10, 'url': 'baz'},
+    {'id':5, 'name': 'A', 'price': 20, 'url': 'bar'},
+    {'id':6, 'name': 'A', 'price': 30, 'url': 'foo'},
+    {'id':7, 'name': 'A', 'price': 99, 'url': 'quu'},
+    {'id':8, 'name': 'B', 'price': 10, 'url': 'foo'},
+]
+</code></pre>
+
+<p>I want to remove records that are "duplicates", where equality is defined by a list of logical conditions. Each element in the list is an OR condition, and all elements are ANDed together. For example:</p>
+
+<pre><code>filters = [  ['name'],   ['price', 'url']  ]
+</code></pre>
+
+<p>means that two records are considered equal if their name AND (their price OR url) are equal. For the above example:</p>
+
+<pre><code>For item 1 the duplicates are 4 (by name and price) and 6 (name+url)
+For item 2 - 5 (name+price, name+url)
+For item 3 - 4 (name+url) and 6 (name+price)
+For item 7 there are no duplicates (neither price nor url match)
+For item 8 there are no duplicates (name doesn't match)
+</code></pre>
+
+<p>So the resulting list must contain items 1, 2, 3, 7 and 8.</p>
+
+<p>Please take into account that</p>
+
+<ul>
+<li>there might be more AND conditions: <code>['name'], ['price', 'url'], ['weight'], ['size'], ...</code></li>
+<li>the OR groups in the conditions list can be longer than 2 items, e.g. <code>['name'], ['price', 'url', 'weight']...</code></li>
+<li>the source list is very long, an <code>O(n^2)</code> alogirthm is out of the question</li>
+</ul>
+
+
+Answer: <p>Based on the idea of Tim Pietzcker, the following is working for me:</p>
+
+<p>We start by converting the CNF condition like <code>a&amp;(b|c)</code> into a DNF: <code>(a&amp;b)|(a&amp;c)</code>. Using the list notation as in the question, i.e <code>[ [a], [b, c] ]</code>, the DNF will be <code>[ [a, b], [a, c] ]</code>.  In python this is as simple as <code>itertools.product(*filters)</code>.</p>
+
+<p>Then we iterate over the list and for each conjunct in the DNF create a composite key:</p>
+
+<pre><code>( (a, rec[a]), (b, rec[b]) )
+</code></pre>
+
+<p>and check if any of the keys have been seen already. If not, we consider the record to be unique and add its keys to the <code>seen</code> set:</p>
+
+<p>The code:</p>
+
+<pre><code>seen = set()
+dnf = list(itertools.product(*filters))
+
+for item in data:
+    keys = set(
+        tuple((field, item.get(field, None)) for field in conjunct) 
+        for conjunct in dnf)
+    if keys.isdisjoint(seen):
+        seen |= keys
+        print item # unique
+</code></pre>
+
+<p>Kudos to Tim for giving me an idea. If anyone sees any problems with this solution, please let me know.</p>
+
+
+Title: Maps (hashtables) in the real world
+Tags: <javascript><python><data-structures><dictionary>
+Body: <p>I'm trying to explain Map (aka hash table, dict) to someone who's new to programming. While the concepts of Array (=list of things) and Set (=bag of things) are familiar to everyone, I'm having a hard time finding a real-world metaphor for Maps (I'm specifically interested in python <code>dicts</code> and Javascript <code>Objects</code>). The often used <strong>dictionary/phone book analogy is incorrect</strong>, because dictionaries are sorted, while Maps are not - and this point is important to me. 
+So the question is: what would be a real world phenomena or device that behaves like Map in computing?</p>
+
+
+Answer: <p>I agree with delnan in that the human example is probably too close to that of an object. This works well if you are trying to transition into explaining how objects are implemented in loosely typed languages, however a map is a concept that exists in Java and C# as well. This could potentially be very confusing if they begin to use those languages.</p>
+
+<p>Essentially you need to understand that maps are instant look-ups that rely on a unique set of values as keys. These two things really need to be stressed, so here's a decent yet highly contrived example:</p>
+
+<p>Lets say you're having a party and everyone is supposed to bring one thing. To help the organizer, everyone says what their first name is and what they're bringing. Now lets pretend there are two ways to store this information. The first is by putting it down on a list and the second is by telling someone with a didactic memory. The contrived part is that they can only identify you through you're first name (so he's blind and has a cochlear implant so everyone sounds like a robot, best I can come up with). </p>
+
+<p>List: To add, you just append to the bottom of the list. To back out you just remove yourself from the list. If you want to see who is bringing something and what they're bringing, then you have to scan the entire list until you find them. If you don't find them after scanning, then they're clearly they're not on the list and not bringing anything. The list would clearly allow duplicates of people with the same first name. </p>
+
+<p>Dictionary (contrived person): You don't append to the end of the list, you just tell him someone's first name and what they're bringing. If you want to know what someone is bringing you just ask by name and he immediately tells you. Likewise if two people of the same name tell him they're bringing something, he'll think its the same person just changing what they're bringing. If someone hasn't signed up you would ask by name, but he'd be confused and ask you what you're talking about. Also you would have to say when you tell the guy that someone is no longer bringing something he would lose all memory of them, so yeah highly contrived.</p>
+
+<p>You might also want to show why the list is sufficient if you don't care who brings what, but just need to know what all is being brought. Maybe even leave the names off the list, to stress key/value pairs with the dictionary.</p>
+
+
+Title: Implementing python slice notation
+Tags: <php><python><arrays><algorithm><language-comparisons>
+Body: <p>I'm trying to reimplement python <a href="https://stackoverflow.com/questions/509211/good-primer-for-python-slice-notation">slice notation</a> in another language (php) and looking for a snippet (in any language or pseudocode) that would mimic the python logic. That is, given a list and a triple <code>(start, stop, step)</code> or a part thereof, determine correct values or defaults for all parameters and return a slice as a new list.</p>
+
+<p>I tried looking into <a href="http://hg.python.org/cpython/file/3d4d52e47431/Objects/sliceobject.c" rel="nofollow noreferrer">the source</a>. That code is far beyond my c skills, but I can't help but agree with the comment saying:</p>
+
+<pre><code>/* this is harder to get right than you might think */ 
+</code></pre>
+
+<p>Also, if something like this is already done, pointers will be greatly appreciated.</p>
+
+<p>This is my test bench (make sure your code passes before posting):</p>
+
+<pre><code>#place your code below
+code = """
+def mySlice(L, start=None, stop=None, step=None):
+or 
+&lt;?php function mySlice($L, $start=NULL, $stop=NULL, $step=NULL) ...
+or 
+function mySlice(L, start, stop, step) ...
+"""
+
+import itertools
+
+L = [0,1,2,3,4,5,6,7,8,9]
+
+if code.strip().startswith('&lt;?php'):
+     mode = 'php'
+
+if code.strip().startswith('def'):
+     mode = 'python'
+
+if code.strip().startswith('function'):
+     mode = 'js'
+
+if mode == 'php':
+    var, none = '$L', 'NULL'
+    print code, '\n'
+    print '$L=array(%s);' % ','.join(str(x) for x in L)
+    print "function _c($s,$a,$e){if($a!==$e)echo $s,' should be [',implode(',',$e),'] got [',implode(',',$a),']',PHP_EOL;}"
+
+if mode == 'python':
+    var, none = 'L', 'None'
+    print code, '\n'
+    print 'L=%r' % L
+    print "def _c(s,a,e):\n\tif a!=e:\n\t\tprint s,'should be',e,'got',a"
+
+if mode == 'js':
+    var, none = 'L', 'undefined'
+    print code, '\n'
+    print 'L=%r' % L
+    print "function _c(s,a,e){if(a.join()!==e.join())console.log(s+' should be ['+e.join()+'] got ['+a.join()+']');}"
+
+
+print
+
+n = len(L) + 3
+start = range(-n, n) + [None, 100, -100]
+stop  = range(-n, n) + [None, 100, -100]
+step  = range(-n, n) + [100, -100]
+
+for q in itertools.product(start, stop, step): 
+
+    if not q[2]: q = q[:-1]
+
+    actual = 'mySlice(%s,%s)' % (var, ','.join(none if x is None else str(x) for x in q))
+    slice_ = 'L[%s]' % ':'.join('' if x is None else str(x) for x in q)
+    expect = eval(slice_)
+
+    if mode == 'php':
+        expect = 'array(%s)' % ','.join(str(x) for x in expect)
+        print "_c(%r,%s,%s);" % (slice_, actual, expect)
+
+    if mode == 'python':
+        print "_c(%r,%s,%s);" % (slice_, actual, expect)
+
+    if mode == 'js':
+        print "_c(%r,%s,%s);" % (slice_, actual, expect)
+</code></pre>
+
+<p>how to use it:</p>
+
+<ul>
+<li>save into a file (<code>test.py</code>)</li>
+<li>place your python, php or javascript code between <code>"""</code>s</li>
+<li>run <code>python test.py | python</code> or <code>python test.py | php</code> or <code>python test.py | node</code></li>
+</ul>
+
+
+Answer: <p>Here's a straight port of the C code:</p>
+
+<pre><code>def adjust_endpoint(length, endpoint, step):
+     if endpoint &lt; 0:
+         endpoint += length
+         if endpoint &lt; 0:
+             endpoint = -1 if step &lt; 0 else 0
+     elif endpoint &gt;= length:
+         endpoint = length - 1 if step &lt; 0 else length
+     return endpoint
+
+def adjust_slice(length, start, stop, step):
+     if step is None:
+         step = 1
+     elif step == 0:
+         raise ValueError("step cannot be 0")
+
+     if start is None:
+         start = length - 1 if step &lt; 0 else 0
+     else:
+         start = adjust_endpoint(length, start, step)
+
+     if stop is None:
+         stop = -1 if step &lt; 0 else length
+     else:
+         stop = adjust_endpoint(length, stop, step)
+
+     return start, stop, step
+
+def slice_indices(length, start, stop, step):
+     start, stop, step = adjust_slice(length, start, stop, step)
+     i = start
+     while (i &gt; stop) if step &lt; 0 else (i &lt; stop):
+         yield i
+         i += step
+
+def mySlice(L, start=None, stop=None, step=None):
+     return [L[i] for i in slice_indices(len(L), start, stop, step)]
+</code></pre>
+
+
