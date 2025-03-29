@@ -9,6 +9,8 @@ You can generate explanations and evaluate them using the scripts in `generation
 
 User profiles are available in `user_profile`.
 
+Code solutions can be found in `code_solution`.
+
 ## Usage
 
 ### Run Explanation Generation
